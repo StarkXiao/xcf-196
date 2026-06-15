@@ -48,7 +48,9 @@ function Settings() {
     setFormData({
       ...formData,
       notifications: {
-        ...formData.notifications,
+        dailyReminder: formData.notifications?.dailyReminder ?? true,
+        pactReminder: formData.notifications?.pactReminder ?? true,
+        checkinReminder: formData.notifications?.checkinReminder ?? true,
         [key]: value,
       },
     });
