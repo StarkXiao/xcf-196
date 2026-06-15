@@ -1,0 +1,353 @@
+:root {
+  --moonlight-primary: #6c5ce7;
+  --moonlight-secondary: #a29bfe;
+  --moonlight-bg: #0c0c1d;
+  --moonlight-card: #1a1a2e;
+  --moonlight-text: #f1f1f1;
+  --moonlight-text-muted: #b8b8d1;
+  --moonlight-accent: #fd79a8;
+  --moonlight-success: #00b894;
+  --moonlight-warning: #fdcb6e;
+  --moonlight-danger: #e17055;
+  --sunset-primary: #e17055;
+  --sunset-secondary: #fab1a0;
+  --sunset-bg: #2d1f2d;
+  --sunset-card: #3d2c3d;
+  --sunset-text: #fdf6f0;
+  --ocean-primary: #0984e3;
+  --ocean-secondary: #74b9ff;
+  --ocean-bg: #0d2137;
+  --ocean-card: #15304d;
+  --ocean-text: #e8f4fd;
+  --forest-primary: #00b894;
+  --forest-secondary: #55efc4;
+  --forest-bg: #0d1f15;
+  --forest-card: #153023;
+  --forest-text: #e8f8f0;
+  --primary: var(--moonlight-primary);
+  --secondary: var(--moonlight-secondary);
+  --bg-color: var(--moonlight-bg);
+  --card-bg: var(--moonlight-card);
+  --text-color: var(--moonlight-text);
+  --text-muted: var(--moonlight-text-muted);
+  --accent: var(--moonlight-accent);
+  --success: var(--moonlight-success);
+  --warning: var(--moonlight-warning);
+  --danger: var(--moonlight-danger);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+body.theme-moonlight {
+  --primary: var(--moonlight-primary);
+  --secondary: var(--moonlight-secondary);
+  --bg-color: var(--moonlight-bg);
+  --card-bg: var(--moonlight-card);
+  --text-color: var(--moonlight-text);
+  --text-muted: var(--moonlight-text-muted);
+  --accent: var(--moonlight-accent);
+  --success: var(--moonlight-success);
+  --warning: var(--moonlight-warning);
+  --danger: var(--moonlight-danger);
+}
+
+body.theme-sunset {
+  --primary: var(--sunset-primary);
+  --secondary: var(--sunset-secondary);
+  --bg-color: var(--sunset-bg);
+  --card-bg: var(--sunset-card);
+  --text-color: var(--sunset-text);
+  --text-muted: #d4a5a5;
+  --accent: #fdcb6e;
+  --success: #00b894;
+  --warning: #fdcb6e;
+  --danger: #e17055;
+}
+
+body.theme-ocean {
+  --primary: var(--ocean-primary);
+  --secondary: var(--ocean-secondary);
+  --bg-color: var(--ocean-bg);
+  --card-bg: var(--ocean-card);
+  --text-color: var(--ocean-text);
+  --text-muted: #a0c4e8;
+  --accent: #fd79a8;
+  --success: #00b894;
+  --warning: #fdcb6e;
+  --danger: #e17055;
+}
+
+body.theme-forest {
+  --primary: var(--forest-primary);
+  --secondary: var(--forest-secondary);
+  --bg-color: var(--forest-bg);
+  --card-bg: var(--forest-card);
+  --text-color: var(--forest-text);
+  --text-muted: #a0d4b8;
+  --accent: #fd79a8;
+  --success: #00b894;
+  --warning: #fdcb6e;
+  --danger: #e17055;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--secondary);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+.card {
+  background-color: var(--card-bg);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--secondary);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--text-muted);
+}
+
+.btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-success {
+  background-color: var(--success);
+  color: white;
+}
+
+.btn-success:hover {
+  opacity: 0.9;
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-color);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 768px) {
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-active {
+  background-color: rgba(0, 184, 148, 0.2);
+  color: var(--success);
+}
+
+.badge-paused {
+  background-color: rgba(253, 203, 110, 0.2);
+  color: var(--warning);
+}
+
+.badge-completed {
+  background-color: rgba(108, 92, 231, 0.2);
+  color: var(--secondary);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.floating {
+  animation: float 3s ease-in-out infinite;
+}
+
+.stars-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background-color: white;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
