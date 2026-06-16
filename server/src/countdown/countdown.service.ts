@@ -2,13 +2,10 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PactsService } from '../pacts/pacts.service';
 import { UsersService } from '../users/users.service';
 import { RemindersService } from '../reminders/reminders.service';
-import { GrowthService } from '../growth/growth.service';
 import { CountdownItem, AtmosphereStatus } from './entities/countdown.entity';
 
 @Injectable()
 export class CountdownService {
-  private triggeredAnniversaryYears: Set<number> = new Set();
-
   constructor(
     @Inject(forwardRef(() => PactsService))
     private readonly pactsService: PactsService,
@@ -16,28 +13,45 @@ export class CountdownService {
     private readonly usersService: UsersService,
     @Inject(forwardRef(() => RemindersService))
     private readonly remindersService: RemindersService,
-    @Inject(forwardRef(() => GrowthService))
-    private readonly growthService: GrowthService,
   ) {}
+
+  private isSameDay(a: Date, b: Date): boolean {
+    return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
+
+  private isBeforeDay(a: Date, b: Date): boolean {
+    const aDate = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+    const bDate = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+    return aDate < bDate;
+  }
+
+  private calcCountdown(targetDate: Date, now: Date): { days: number; hours: number; minutes: number } {
+    const targetDayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const nowDayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diff = targetDayStart.getTime() - nowDayStart.getTime();
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((Math.abs(diff) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((Math.abs(diff) % (1000 * 60 * 60)) / (1000 * 60)),
+    };
+  }
 
   findAll(): CountdownItem[] {
     const items: CountdownItem[] = [];
     const now = new Date();
 
-    const anniversaryInfo = this.usersService.getAnniversaryInfo();
     const user = this.usersService.findOne();
     const anniversaryDate = new Date(user.anniversary);
 
     let nextAnniv = new Date(now.getFullYear(), anniversaryDate.getMonth(), anniversaryDate.getDate());
-    if (nextAnniv < now) {
+    if (this.isBeforeDay(nextAnniv, now) && !this.isSameDay(nextAnniv, now)) {
       nextAnniv = new Date(now.getFullYear() + 1, anniversaryDate.getMonth(), anniversaryDate.getDate());
     }
 
-    const annivDiff = nextAnniv.getTime() - now.getTime();
-    const annivDays = Math.floor(annivDiff / (1000 * 60 * 60 * 24));
-    const annivHours = Math.floor((annivDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const annivMinutes = Math.floor((annivDiff % (1000 * 60 * 60)) / (1000 * 60));
-
+    const isAnnivToday = this.isSameDay(nextAnniv, now);
+    const { days: annivDays, hours: annivHours, minutes: annivMinutes } = this.calcCountdown(nextAnniv, now);
     const yearsTogether = now.getFullYear() - anniversaryDate.getFullYear();
 
     const anniversaryItem: CountdownItem = {
@@ -50,32 +64,13 @@ export class CountdownService {
       daysLeft: annivDays,
       hoursLeft: annivHours,
       minutesLeft: annivMinutes,
-      isToday: annivDays === 0,
+      isToday: isAnnivToday,
       isNear: annivDays <= 7 && annivDays > 0,
-      atmosphere: annivDays <= 7 ? 'romantic' : 'none',
+      atmosphere: (isAnnivToday || annivDays <= 7) ? 'romantic' : 'none',
       description: `在一起${yearsTogether}年的纪念日即将到来`,
     };
 
     items.push(anniversaryItem);
-
-    if (anniversaryItem.isToday) {
-      const currentYear = now.getFullYear();
-      const anniversaryYear = now.getFullYear() - yearsTogether + (now < nextAnniv ? 0 : 1);
-      if (!this.triggeredAnniversaryYears.has(currentYear)) {
-        this.triggeredAnniversaryYears.add(currentYear);
-        try {
-          const isFirstTime = nextAnniv.getFullYear() === anniversaryDate.getFullYear();
-          const anniversaryNumber = nextAnniv.getFullYear() - anniversaryDate.getFullYear();
-          this.growthService.handleAnniversaryInteraction(
-            anniversaryNumber,
-            nextAnniv.toISOString().split('T')[0],
-            isFirstTime
-          );
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
 
     const pacts = this.pactsService.findAll('active');
     const specialPacts = pacts.filter(p => p.category === 'special');
@@ -83,14 +78,12 @@ export class CountdownService {
     specialPacts.forEach(pact => {
       const startDate = new Date(pact.startDate);
       let nextDate = new Date(now.getFullYear(), startDate.getMonth(), startDate.getDate());
-      if (nextDate < now) {
+      if (this.isBeforeDay(nextDate, now) && !this.isSameDay(nextDate, now)) {
         nextDate = new Date(now.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
       }
 
-      const diff = nextDate.getTime() - now.getTime();
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const { days, hours, minutes } = this.calcCountdown(nextDate, now);
+      const isToday = this.isSameDay(nextDate, now);
 
       items.push({
         id: `countdown-pact-${pact.id}`,
@@ -102,10 +95,10 @@ export class CountdownService {
         daysLeft: days,
         hoursLeft: hours,
         minutesLeft: minutes,
-        isToday: days === 0,
+        isToday,
         isNear: days <= 7 && days > 0,
         pactId: pact.id,
-        atmosphere: days <= 3 ? 'festive' : 'none',
+        atmosphere: (isToday || days <= 3) ? 'festive' : 'none',
         description: pact.description,
       });
     });
@@ -117,14 +110,12 @@ export class CountdownService {
     anniversaryReminders.forEach(reminder => {
       const reminderDate = new Date(reminder.date);
       let nextDate = new Date(now.getFullYear(), reminderDate.getMonth(), reminderDate.getDate());
-      if (nextDate < now) {
+      if (this.isBeforeDay(nextDate, now) && !this.isSameDay(nextDate, now)) {
         nextDate = new Date(now.getFullYear() + 1, reminderDate.getMonth(), reminderDate.getDate());
       }
 
-      const diff = nextDate.getTime() - now.getTime();
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const { days, hours, minutes } = this.calcCountdown(nextDate, now);
+      const isToday = this.isSameDay(nextDate, now);
 
       const exists = items.some(
         i => i.targetDate === nextDate.toISOString().split('T')[0] && i.type === 'anniversary',
@@ -141,9 +132,9 @@ export class CountdownService {
         daysLeft: days,
         hoursLeft: hours,
         minutesLeft: minutes,
-        isToday: days === 0,
+        isToday,
         isNear: days <= 7 && days > 0,
-        atmosphere: days <= 7 ? 'romantic' : 'none',
+        atmosphere: (isToday || days <= 7) ? 'romantic' : 'none',
         description: reminder.description,
       });
     });

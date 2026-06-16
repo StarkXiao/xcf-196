@@ -51,4 +51,12 @@ export class GrowthController {
       data.metadata,
     );
   }
+
+  @Post('anniversary-interaction')
+  celebrateAnniversary(@Body() data: { anniversaryNumber?: number; anniversaryDate?: string }) {
+    return this.growthService.handleAnniversaryInteraction(
+      data.anniversaryNumber,
+      data.anniversaryDate,
+    );
+  }
 }

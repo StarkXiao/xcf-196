@@ -39,6 +39,13 @@ export interface Pact {
   creatorConfirmed: boolean;
   partnerConfirmed: boolean;
   confirmedAt?: string;
+  pausedAt?: string;
+  pauseReason?: string;
+  resumeDate?: string;
+  resumeReminderEnabled?: boolean;
+  resumeReminderDays?: number;
+  streakProtected?: boolean;
+  savedStreak?: number;
 }
 
 export interface Checkin {
@@ -192,7 +199,7 @@ export const mockPacts: Pact[] = [
     title: '每天喝水8杯',
     description: '互相监督保持健康的饮水习惯',
     category: 'daily',
-    startDate: '2024-04-01',
+    startDate: '2026-04-01',
     status: 'paused',
     currentStreak: 0,
     longestStreak: 20,
@@ -207,6 +214,13 @@ export const mockPacts: Pact[] = [
     creatorConfirmed: true,
     partnerConfirmed: true,
     confirmedAt: undefined,
+    pausedAt: '2026-06-10T00:00:00Z',
+    pauseReason: '出差期间不方便记录',
+    resumeDate: '2026-06-20',
+    resumeReminderEnabled: true,
+    resumeReminderDays: 2,
+    streakProtected: true,
+    savedStreak: 15,
   },
   {
     id: 'pact-6',

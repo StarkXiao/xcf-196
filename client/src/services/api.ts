@@ -33,6 +33,24 @@ export const pactsApi = {
     api.patch<Pact>(`/pacts/${id}`, data).then(res => res.data),
   confirm: (id: string, role: 'creator' | 'partner') =>
     api.post<Pact>(`/pacts/${id}/confirm`, { role }).then(res => res.data),
+  pause: (id: string, data: {
+    pauseReason?: string;
+    resumeDate?: string;
+    resumeReminderEnabled?: boolean;
+    resumeReminderDays?: number;
+    streakProtected?: boolean;
+  }) => api.post<Pact>(`/pacts/${id}/pause`, data).then(res => res.data),
+  resume: (id: string, data?: { resumeNote?: string }) =>
+    api.post<Pact>(`/pacts/${id}/resume`, data || {}).then(res => res.data),
+  setResumePlan: (id: string, data: {
+    resumeDate: string;
+    resumeReminderEnabled?: boolean;
+    resumeReminderDays?: number;
+  }) => api.post<Pact>(`/pacts/${id}/resume-plan`, data).then(res => res.data),
+  getUpcomingResumes: (days?: number) =>
+    api.get<Pact[]>('/pacts/upcoming-resumes', { params: { days } }).then(res => res.data),
+  getPausedWithResumePlan: () =>
+    api.get<Pact[]>('/pacts/paused-with-resume').then(res => res.data),
   remove: (id: string) => api.delete(`/pacts/${id}`),
   getStats: () => api.get<PactStats>('/pacts/stats').then(res => res.data),
 };
@@ -140,4 +158,6 @@ export const growthApi = {
   getLevels: () => api.get<GrowthLevel[]>('/growth/levels').then(res => res.data),
   addRecord: (data: { points: number; reason: string; sourceType: GrowthRecord['sourceType']; sourceId?: string; metadata?: Record<string, any> }) =>
     api.post<GrowthRecord>('/growth/records', data).then(res => res.data),
+  celebrateAnniversary: (data?: { anniversaryNumber?: number; anniversaryDate?: string }) =>
+    api.post<GrowthRecord>('/growth/anniversary-interaction', data || {}).then(res => res.data),
 };

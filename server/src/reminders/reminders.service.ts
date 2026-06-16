@@ -256,6 +256,9 @@ export class RemindersService {
       });
     });
 
+    const resumeReminders = this.generateResumeReminders(days);
+    datedReminders.push(...resumeReminders);
+
     datedReminders.sort((a, b) => {
       const dateCompare = a.nextDate.localeCompare(b.nextDate);
       if (dateCompare !== 0) return dateCompare;
@@ -376,6 +379,60 @@ export class RemindersService {
         }
       }
     });
+
+    return result;
+  }
+
+  private generateResumeReminders(days: number): Array<Reminder & { nextDate: string; computedPriority: string }> {
+    const result: Array<Reminder & { nextDate: string; computedPriority: string }> = [];
+    const now = new Date();
+    const today = new Date(now.toISOString().split('T')[0]);
+
+    try {
+      const pausedPacts = this.pactsService.findAll('paused');
+      
+      pausedPacts.forEach(pact => {
+        if (!pact.resumeDate || !pact.resumeReminderEnabled) return;
+
+        const resumeDate = new Date(pact.resumeDate);
+        const reminderDays = pact.resumeReminderDays || 1;
+        const reminderDate = new Date(resumeDate);
+        reminderDate.setDate(reminderDate.getDate() - reminderDays);
+
+        if (reminderDate < today) return;
+
+        const diff = Math.ceil(
+          (reminderDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        if (diff > days) return;
+
+        const isToday = diff === 0;
+        const isTomorrow = diff === 1;
+
+        result.push({
+          id: `resume-${pact.id}`,
+          title: isToday 
+            ? `「${pact.title}」今天恢复！` 
+            : isTomorrow 
+              ? `「${pact.title}」明天恢复` 
+              : `「${pact.title}」还有${diff}天恢复`,
+          description: pact.pauseReason 
+            ? `暂停原因：${pact.pauseReason}，准备好重新开始了吗？` 
+            : '准备好重新开始了吗？让我们继续坚持！',
+          type: 'pact',
+          date: reminderDate.toISOString().split('T')[0],
+          time: '09:00',
+          repeat: 'none',
+          isActive: true,
+          pactId: pact.id,
+          priority: 'high',
+          nextDate: reminderDate.toISOString().split('T')[0],
+          computedPriority: 'high',
+        });
+      });
+    } catch (e) {
+      // ignore
+    }
 
     return result;
   }

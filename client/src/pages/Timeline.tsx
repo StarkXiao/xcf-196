@@ -345,9 +345,9 @@ function Timeline() {
                               <span>🔥 连续打卡里程碑：{record.metadata.streakDays}天</span>
                             </div>
                           )}
-                          {record.metadata?.yearsTogether && (
+                          {record.metadata?.anniversaryNumber != null && (
                             <div className="growth-milestone-info" style={{ background: 'rgba(253, 121, 168, 0.1)', borderLeft: '3px solid #fd79a8' }}>
-                              <span>💕 在一起{record.metadata.yearsTogether}周年</span>
+                              <span>💕 {record.metadata.anniversaryNumber === 0 ? '在一起的第一天' : `在一起${record.metadata.anniversaryNumber}周年`}</span>
                             </div>
                           )}
                         </div>

@@ -81,4 +81,34 @@ export class UpdatePactDto {
   @IsDateString()
   @IsOptional()
   confirmedAt?: string;
+
+  @IsDateString()
+  @IsOptional()
+  pausedAt?: string;
+
+  @IsString()
+  @IsOptional()
+  pauseReason?: string;
+
+  @IsDateString()
+  @IsOptional()
+  resumeDate?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  resumeReminderEnabled?: boolean;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  resumeReminderDays?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  streakProtected?: boolean;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  savedStreak?: number;
 }

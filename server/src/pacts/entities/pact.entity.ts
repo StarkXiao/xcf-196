@@ -19,4 +19,11 @@ export interface Pact {
   creatorConfirmed: boolean;
   partnerConfirmed: boolean;
   confirmedAt?: string;
+  pausedAt?: string;
+  pauseReason?: string;
+  resumeDate?: string;
+  resumeReminderEnabled?: boolean;
+  resumeReminderDays?: number;
+  streakProtected?: boolean;
+  savedStreak?: number;
 }

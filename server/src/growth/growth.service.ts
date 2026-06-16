@@ -216,29 +216,37 @@ export class GrowthService {
     );
   }
 
-  handleAnniversaryInteraction(anniversaryNumber: number, anniversaryDate: string, isFirstTime: boolean = false): GrowthRecord {
+  handleAnniversaryInteraction(anniversaryNumber?: number, anniversaryDate?: string): GrowthRecord {
     const user = this.usersService.findOne();
     const anniversary = new Date(user.anniversary);
     const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    const effectiveDate = anniversaryDate || todayStr;
+    const anniversaryYear = parseInt(effectiveDate.substring(0, 4), 10);
+    const effectiveNumber = anniversaryNumber ?? (anniversaryYear - anniversary.getFullYear());
 
     const existingRecord = this.records.find(
-      r => r.sourceType === 'anniversary' && r.createdAt.split('T')[0] === anniversaryDate
+      r => r.sourceType === 'anniversary' && r.createdAt.split('T')[0] === effectiveDate
     );
     if (existingRecord) {
       return existingRecord;
     }
 
-    const points = isFirstTime ? POINT_RULES.ANNIVERSARY_DAY + POINT_RULES.ANNIVERSARY_INTERACTION : POINT_RULES.ANNIVERSARY_DAY;
-    const reason = anniversaryNumber === 0
+    const isFirstTime = effectiveNumber === 0;
+    const points = isFirstTime
+      ? POINT_RULES.ANNIVERSARY_DAY + POINT_RULES.ANNIVERSARY_INTERACTION
+      : POINT_RULES.ANNIVERSARY_DAY;
+    const reason = isFirstTime
       ? '今天是我们在一起的第一天！💑'
-      : `在一起${anniversaryNumber}周年纪念日互动！💕`;
+      : `在一起${effectiveNumber}周年纪念日互动！💕`;
 
     return this.addRecord(
       points,
       reason,
       'anniversary',
       undefined,
-      { anniversaryNumber, anniversaryDate, isFirstTime, anniversaryType: 'main' },
+      { anniversaryNumber: effectiveNumber, anniversaryDate: effectiveDate, isFirstTime, anniversaryType: 'main' },
     );
   }
 

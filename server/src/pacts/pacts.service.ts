@@ -6,6 +6,18 @@ import { Pact } from './entities/pact.entity';
 import { mockPacts } from '../data/seed';
 import { GrowthService } from '../growth/growth.service';
 
+export interface PausePactDto {
+  pauseReason?: string;
+  resumeDate?: string;
+  resumeReminderEnabled?: boolean;
+  resumeReminderDays?: number;
+  streakProtected?: boolean;
+}
+
+export interface ResumePactDto {
+  resumeNote?: string;
+}
+
 @Injectable()
 export class PactsService {
   private pacts: Pact[] = [...mockPacts];
@@ -60,6 +72,9 @@ export class PactsService {
       creatorConfirmed: requireDualConfirmation ? false : true,
       partnerConfirmed: false,
       confirmedAt: undefined,
+      streakProtected: true,
+      resumeReminderEnabled: true,
+      resumeReminderDays: 1,
     };
     this.pacts.push(newPact);
     return newPact;
@@ -103,6 +118,59 @@ export class PactsService {
     return this.pacts[index];
   }
 
+  pause(id: string, pauseDto: PausePactDto): Pact {
+    const pact = this.findOne(id);
+    
+    if (pact.status !== 'active') {
+      throw new BadRequestException(`「${pact.title}」当前状态不允许暂停`);
+    }
+
+    const index = this.pacts.findIndex(p => p.id === id);
+    const updatedPact: Pact = {
+      ...pact,
+      status: 'paused',
+      pausedAt: new Date().toISOString(),
+      pauseReason: pauseDto.pauseReason,
+      resumeDate: pauseDto.resumeDate,
+      resumeReminderEnabled: pauseDto.resumeReminderEnabled !== undefined ? pauseDto.resumeReminderEnabled : true,
+      resumeReminderDays: pauseDto.resumeReminderDays || 1,
+      streakProtected: pauseDto.streakProtected !== undefined ? pauseDto.streakProtected : true,
+      savedStreak: (pauseDto.streakProtected !== false) ? pact.currentStreak : 0,
+    };
+
+    if (pauseDto.streakProtected === false) {
+      updatedPact.currentStreak = 0;
+    }
+
+    this.pacts[index] = updatedPact;
+    return this.pacts[index];
+  }
+
+  resume(id: string, resumeDto?: ResumePactDto): Pact {
+    const pact = this.findOne(id);
+    
+    if (pact.status !== 'paused') {
+      throw new BadRequestException(`「${pact.title}」当前状态不允许恢复`);
+    }
+
+    const index = this.pacts.findIndex(p => p.id === id);
+    const updatedPact: Pact = {
+      ...pact,
+      status: 'active',
+      currentStreak: pact.streakProtected && pact.savedStreak ? pact.savedStreak : 0,
+    };
+
+    delete updatedPact.resumeDate;
+    delete updatedPact.pausedAt;
+    delete updatedPact.pauseReason;
+    delete updatedPact.resumeReminderEnabled;
+    delete updatedPact.resumeReminderDays;
+    delete updatedPact.savedStreak;
+
+    this.pacts[index] = updatedPact;
+    return this.pacts[index];
+  }
+
   update(id: string, updatePactDto: UpdatePactDto): Pact {
     const pact = this.findOne(id);
     const index = this.pacts.findIndex(p => p.id === id);
@@ -119,17 +187,82 @@ export class PactsService {
     return updatedPact;
   }
 
+  setResumePlan(id: string, resumeDate: string, reminderEnabled?: boolean, reminderDays?: number): Pact {
+    const pact = this.findOne(id);
+    
+    if (pact.status !== 'paused') {
+      throw new BadRequestException(`「${pact.title}」只有暂停状态的约定才能设置恢复计划`);
+    }
+
+    const index = this.pacts.findIndex(p => p.id === id);
+    this.pacts[index] = {
+      ...pact,
+      resumeDate,
+      resumeReminderEnabled: reminderEnabled !== undefined ? reminderEnabled : true,
+      resumeReminderDays: reminderDays || 1,
+    };
+    return this.pacts[index];
+  }
+
+  getUpcomingResumes(days: number = 7): Pact[] {
+    const now = new Date();
+    const today = new Date(now.toISOString().split('T')[0]);
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + days);
+
+    return this.pacts
+      .filter(pact => {
+        if (pact.status !== 'paused' || !pact.resumeDate) return false;
+        const resumeDate = new Date(pact.resumeDate);
+        return resumeDate >= today && resumeDate <= endDate;
+      })
+      .sort((a, b) => new Date(a.resumeDate!).getTime() - new Date(b.resumeDate!).getTime());
+  }
+
+  getPausedWithResumePlan(): Pact[] {
+    return this.pacts
+      .filter(pact => pact.status === 'paused' && !!pact.resumeDate)
+      .sort((a, b) => new Date(a.resumeDate!).getTime() - new Date(b.resumeDate!).getTime());
+  }
+
+  checkAndResumeDuePacts(): Pact[] {
+    const today = new Date().toISOString().split('T')[0];
+    const resumedPacts: Pact[] = [];
+
+    this.pacts.forEach((pact, index) => {
+      if (pact.status === 'paused' && pact.resumeDate && pact.resumeDate <= today) {
+        const updatedPact: Pact = {
+          ...pact,
+          status: 'active',
+          currentStreak: pact.streakProtected && pact.savedStreak ? pact.savedStreak : 0,
+        };
+        delete updatedPact.resumeDate;
+        delete updatedPact.pausedAt;
+        delete updatedPact.pauseReason;
+        delete updatedPact.resumeReminderEnabled;
+        delete updatedPact.resumeReminderDays;
+        delete updatedPact.savedStreak;
+        
+        this.pacts[index] = updatedPact;
+        resumedPacts.push(updatedPact);
+      }
+    });
+
+    return resumedPacts;
+  }
+
   remove(id: string): void {
     this.findOne(id);
     this.pacts = this.pacts.filter(p => p.id !== id);
   }
 
-  getStats(): { total: number; active: number; pendingConfirmation: number; completed: number; totalCheckins: number } {
+  getStats(): { total: number; active: number; pendingConfirmation: number; completed: number; paused: number; totalCheckins: number } {
     const total = this.pacts.length;
     const active = this.pacts.filter(p => p.status === 'active').length;
     const pendingConfirmation = this.pacts.filter(p => p.status === 'pending_confirmation').length;
     const completed = this.pacts.filter(p => p.status === 'completed').length;
+    const paused = this.pacts.filter(p => p.status === 'paused').length;
     const totalCheckins = this.pacts.reduce((sum, p) => sum + p.totalCheckins, 0);
-    return { total, active, pendingConfirmation, completed, totalCheckins };
+    return { total, active, pendingConfirmation, completed, paused, totalCheckins };
   }
 }

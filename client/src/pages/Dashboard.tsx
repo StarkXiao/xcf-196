@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi, growthApi } from '../services/api';
 import type { Pact, Checkin, TimelineEvent, Reminder, PactStats, CheckinStats, CountdownItem, GrowthStats, GrowthRecord, Badge } from '../types';
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [pactStats, setPactStats] = useState<PactStats | null>(null);
   const [checkinStats, setCheckinStats] = useState<CheckinStats | null>(null);
   const [recentPacts, setRecentPacts] = useState<Pact[]>([]);
+  const [upcomingResumes, setUpcomingResumes] = useState<Pact[]>([]);
   const [recentCheckins, setRecentCheckins] = useState<Checkin[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -15,6 +17,8 @@ function Dashboard() {
   const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
   const [showBadgesModal, setShowBadgesModal] = useState(false);
   const [allBadges, setAllBadges] = useState<Badge[]>([]);
+  const [celebratingId, setCelebratingId] = useState<string | null>(null);
+  const [celebrateResult, setCelebrateResult] = useState<{ id: string; points: number } | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -22,11 +26,12 @@ function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [stats, checkinStatsData, pacts, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData] =
+      const [stats, checkinStatsData, pacts, resumes, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData] =
         await Promise.all([
           pactsApi.getStats(),
           checkinsApi.getStats(),
           pactsApi.findAll('active'),
+          pactsApi.getUpcomingResumes(7),
           checkinsApi.findAll(undefined, undefined, undefined),
           timelineApi.findAll(undefined, 5),
           remindersApi.getSmart(7),
@@ -38,6 +43,7 @@ function Dashboard() {
       setPactStats(stats);
       setCheckinStats(checkinStatsData);
       setRecentPacts(pacts.slice(0, 3));
+      setUpcomingResumes(resumes);
       setRecentCheckins(checkins.slice(0, 3));
       setTimeline(timelineData);
       setReminders(remindersData);
@@ -77,6 +83,30 @@ function Dashboard() {
       grateful: '🥰',
     };
     return moods[mood] || '😊';
+  };
+
+  const handleCelebrateAnniversary = async (item: CountdownItem) => {
+    if (celebratingId) return;
+    setCelebratingId(item.id);
+    try {
+      const result = await growthApi.celebrateAnniversary({
+        anniversaryDate: item.targetDate,
+      });
+      setCelebrateResult({ id: item.id, points: result.points });
+      const [newGrowthStats, newGrowthRecords, newBadges] = await Promise.all([
+        growthApi.getStats(),
+        growthApi.getRecords(8),
+        growthApi.getBadges(),
+      ]);
+      setGrowthStats(newGrowthStats);
+      setGrowthRecords(newGrowthRecords);
+      setAllBadges(newBadges);
+      setTimeout(() => setCelebrateResult(null), 4000);
+    } catch (e) {
+      // ignore
+    } finally {
+      setCelebratingId(null);
+    }
   };
 
   const upcomingCountdowns = countdowns.filter(c => c.isNear || c.isToday);
@@ -220,8 +250,19 @@ function Dashboard() {
                   </div>
                   <div className="countdown-timer">
                     {item.isToday ? (
-                      <div className="countdown-today-text" style={{ color: '#e91e63' }}>
-                        🎉 就是今天！
+                      <div className="countdown-today-wrapper">
+                        <div className="countdown-today-text" style={{ color: '#e91e63' }}>
+                          🎉 就是今天！
+                        </div>
+                        {item.type === 'anniversary' && (
+                          <button
+                            className="celebrate-btn"
+                            onClick={() => handleCelebrateAnniversary(item)}
+                            disabled={celebratingId === item.id}
+                          >
+                            {celebratingId === item.id ? '✨ 庆祝中...' : celebrateResult?.id === item.id ? `✅ +${celebrateResult.points}成长值` : '💝 互动庆祝'}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <>
@@ -251,6 +292,80 @@ function Dashboard() {
                     </div>
                   )}
                   <div className="countdown-date muted">{item.targetDate}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {upcomingResumes.length > 0 && (
+        <div className="resume-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              <span className="section-icon">📋</span>
+              待恢复约定
+            </h2>
+            <span className="section-subtitle muted">即将重启的美好约定</span>
+          </div>
+          <div className="resume-grid">
+            {upcomingResumes.map(pact => {
+              const daysUntil = (() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const resume = new Date(pact.resumeDate!);
+                resume.setHours(0, 0, 0, 0);
+                return Math.ceil((resume.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              })();
+              
+              const handleResumeNow = async () => {
+                if (!confirm(`确定要现在恢复「${pact.title}」吗？${pact.streakProtected && pact.savedStreak ? `\n\n将恢复 ${pact.savedStreak} 天的连续记录。` : ''}`)) {
+                  return;
+                }
+                try {
+                  await pactsApi.resume(pact.id);
+                  loadDashboardData();
+                } catch (error) {
+                  console.error('恢复约定失败', error);
+                }
+              };
+
+              return (
+                <div key={pact.id} className="resume-card card">
+                  <div className="resume-card-header">
+                    <div
+                      className="resume-card-icon"
+                      style={{ backgroundColor: `${pact.color}20`, color: pact.color }}
+                    >
+                      {pact.icon}
+                    </div>
+                    <div className="resume-card-info">
+                      <h3 className="resume-card-title">{pact.title}</h3>
+                      <span className="resume-status">
+                        {daysUntil > 0 ? `${daysUntil} 天后恢复` : daysUntil === 0 ? '今天恢复' : '已到恢复日'}
+                      </span>
+                    </div>
+                    <button
+                      className="resume-now-btn"
+                      onClick={handleResumeNow}
+                      style={{ backgroundColor: pact.color }}
+                    >
+                      ▶️ 现在恢复
+                    </button>
+                  </div>
+                  <p className="resume-card-desc muted">{pact.description}</p>
+                  <div className="resume-card-footer">
+                    <div className="resume-date-info">
+                      <span className="resume-date-label">📅 恢复日期</span>
+                      <span className="resume-date-value">{pact.resumeDate}</span>
+                    </div>
+                    {pact.streakProtected && pact.savedStreak !== undefined && pact.savedStreak > 0 && (
+                      <div className="resume-streak-info">
+                        <span className="streak-protected-icon">🔒</span>
+                        <span className="streak-protected-text">保存 {pact.savedStreak} 天连续</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -628,6 +743,128 @@ function Dashboard() {
           margin-bottom: 32px;
         }
 
+        .resume-section {
+          margin-bottom: 32px;
+        }
+
+        .resume-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 16px;
+        }
+
+        .resume-card {
+          position: relative;
+          overflow: hidden;
+          border: 1px solid rgba(253, 121, 168, 0.2);
+          background: linear-gradient(135deg, rgba(253, 121, 168, 0.06), rgba(255, 255, 255, 0.02));
+        }
+
+        .resume-card-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .resume-card-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          flex-shrink: 0;
+        }
+
+        .resume-card-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .resume-card-title {
+          font-size: 16px;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+
+        .resume-status {
+          display: inline-block;
+          padding: 2px 10px;
+          background: rgba(253, 121, 168, 0.15);
+          color: #fd79a8;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .resume-now-btn {
+          padding: 8px 16px;
+          border: none;
+          border-radius: 20px;
+          color: white;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          flex-shrink: 0;
+        }
+
+        .resume-now-btn:hover {
+          transform: scale(1.05);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .resume-card-desc {
+          font-size: 13px;
+          margin-bottom: 16px;
+          line-height: 1.5;
+        }
+
+        .resume-card-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-top: 12px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .resume-date-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .resume-date-label {
+          font-size: 11px;
+          color: var(--text-muted);
+        }
+
+        .resume-date-value {
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .resume-streak-info {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          background: rgba(243, 156, 18, 0.12);
+          border-radius: 8px;
+        }
+
+        .streak-protected-icon {
+          font-size: 14px;
+        }
+
+        .streak-protected-text {
+          font-size: 12px;
+          color: #f39c12;
+          font-weight: 500;
+        }
+
         .section-header {
           display: flex;
           align-items: baseline;
@@ -739,9 +976,39 @@ function Dashboard() {
           margin-left: 2px;
         }
 
+        .countdown-today-wrapper {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+
         .countdown-today-text {
           font-size: 22px;
           font-weight: 700;
+        }
+
+        .celebrate-btn {
+          padding: 6px 18px;
+          border: none;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #e91e63, #ff6b6b);
+          color: white;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+
+        .celebrate-btn:hover:not(:disabled) {
+          transform: scale(1.05);
+          box-shadow: 0 4px 12px rgba(233, 30, 99, 0.35);
+        }
+
+        .celebrate-btn:disabled {
+          opacity: 0.7;
+          cursor: default;
         }
 
         .countdown-badge {

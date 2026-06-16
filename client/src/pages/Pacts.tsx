@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { pactsApi, countdownApi, subtasksApi } from '../services/api';
-import type { Pact, CountdownItem, Subtask, SubtaskStats } from '../types';
+import { pactsApi } from '../services/api';
+import type { Pact } from '../types';
 
 const categoryLabels: Record<string, string> = {
   daily: '每日约定',
@@ -10,15 +10,8 @@ const categoryLabels: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  pending_confirmation: '待确认',
   active: '进行中',
   paused: '已暂停',
-  completed: '已完成',
-};
-
-const subtaskStatusLabels: Record<string, string> = {
-  pending: '未开始',
-  in_progress: '进行中',
   completed: '已完成',
 };
 
@@ -42,50 +35,31 @@ function Pacts() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
   const [editingPact, setEditingPact] = useState<Pact | null>(null);
-  const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
-  const [expandedPactId, setExpandedPactId] = useState<string | null>(null);
-  const [subtasksMap, setSubtasksMap] = useState<Record<string, Subtask[]>>({});
-  const [subtaskStatsMap, setSubtaskStatsMap] = useState<Record<string, SubtaskStats>>({});
-  const [showSubtaskModal, setShowSubtaskModal] = useState(false);
-  const [editingSubtask, setEditingSubtask] = useState<Subtask | null>(null);
-  const [currentPactId, setCurrentPactId] = useState<string>('');
-  const [formData, setFormData] = useState<{
-    title: string;
-    description: string;
-    category: Pact['category'];
-    startDate: string;
-    icon: string;
-    color: string;
-    requireDualConfirmation: boolean;
-  }>({
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: 'daily',
+    category: 'daily' as const,
     startDate: new Date().toISOString().split('T')[0],
     icon: '✨',
     color: '#9b59b6',
-    requireDualConfirmation: false,
   });
-  const [subtaskFormData, setSubtaskFormData] = useState<{
-    title: string;
-    description: string;
-    targetCount: number;
-    unit: string;
-    deadline: string;
-    isMilestone: boolean;
-    milestoneReward: string;
-    icon: string;
-    color: string;
-  }>({
-    title: '',
-    description: '',
-    targetCount: 10,
-    unit: '次',
-    deadline: '',
-    isMilestone: false,
-    milestoneReward: '',
-    icon: '📋',
-    color: '#9b59b6',
+
+  const [showPauseModal, setShowPauseModal] = useState(false);
+  const [pausingPact, setPausingPact] = useState<Pact | null>(null);
+  const [pauseFormData, setPauseFormData] = useState({
+    pauseReason: '',
+    resumeDate: '',
+    resumeReminderEnabled: true,
+    resumeReminderDays: 1,
+    streakProtected: true,
+  });
+
+  const [showResumePlanModal, setShowResumePlanModal] = useState(false);
+  const [resumePlanPact, setResumePlanPact] = useState<Pact | null>(null);
+  const [resumePlanFormData, setResumePlanFormData] = useState({
+    resumeDate: '',
+    resumeReminderEnabled: true,
+    resumeReminderDays: 1,
   });
 
   useEffect(() => {
@@ -95,50 +69,12 @@ function Pacts() {
   const loadPacts = async () => {
     try {
       const status = filter === 'all' ? undefined : filter;
-      const categoryValue = categoryFilter === 'all' ? undefined : categoryFilter;
-      const [data, countdownData] = await Promise.all([
-        pactsApi.findAll(status, categoryValue),
-        countdownApi.findAll(),
-      ]);
+      const category = categoryFilter === 'all' ? undefined : categoryFilter;
+      const data = await pactsApi.findAll(status, category);
       setPacts(data);
-      setCountdowns(countdownData);
-
-      const subtasksPromises = data.map(pact => subtasksApi.findAll(pact.id));
-      const statsPromises = data.map(pact => subtasksApi.getStats(pact.id));
-      
-      const [subtasksResults, statsResults] = await Promise.all([
-        Promise.all(subtasksPromises),
-        Promise.all(statsPromises),
-      ]);
-
-      const newSubtasksMap: Record<string, Subtask[]> = {};
-      const newStatsMap: Record<string, SubtaskStats> = {};
-      data.forEach((pact, index) => {
-        newSubtasksMap[pact.id] = subtasksResults[index];
-        newStatsMap[pact.id] = statsResults[index];
-      });
-      setSubtasksMap(newSubtasksMap);
-      setSubtaskStatsMap(newStatsMap);
     } catch (error) {
       console.error('加载约定失败', error);
     }
-  };
-
-  const loadSubtasks = async (pactId: string) => {
-    try {
-      const [subtasks, stats] = await Promise.all([
-        subtasksApi.findAll(pactId),
-        subtasksApi.getStats(pactId),
-      ]);
-      setSubtasksMap(prev => ({ ...prev, [pactId]: subtasks }));
-      setSubtaskStatsMap(prev => ({ ...prev, [pactId]: stats }));
-    } catch (error) {
-      console.error('加载子任务失败', error);
-    }
-  };
-
-  const getCountdownForPact = (pactId: string): CountdownItem | undefined => {
-    return countdowns.find(c => c.pactId === pactId);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,18 +102,8 @@ function Pacts() {
       startDate: pact.startDate,
       icon: pact.icon,
       color: pact.color,
-      requireDualConfirmation: pact.requireDualConfirmation,
     });
     setShowModal(true);
-  };
-
-  const handleConfirm = async (pactId: string, role: 'creator' | 'partner') => {
-    try {
-      await pactsApi.confirm(pactId, role);
-      loadPacts();
-    } catch (error) {
-      console.error('确认约定失败', error);
-    }
   };
 
   const handleDelete = async (id: string) => {
@@ -191,14 +117,76 @@ function Pacts() {
     }
   };
 
-  const toggleStatus = async (pact: Pact) => {
-    const newStatus = pact.status === 'active' ? 'paused' : 'active';
+  const handlePauseClick = (pact: Pact) => {
+    setPausingPact(pact);
+    const defaultResumeDate = new Date();
+    defaultResumeDate.setDate(defaultResumeDate.getDate() + 7);
+    setPauseFormData({
+      pauseReason: '',
+      resumeDate: defaultResumeDate.toISOString().split('T')[0],
+      resumeReminderEnabled: true,
+      resumeReminderDays: 1,
+      streakProtected: true,
+    });
+    setShowPauseModal(true);
+  };
+
+  const handlePauseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pausingPact) return;
     try {
-      await pactsApi.update(pact.id, { status: newStatus });
+      await pactsApi.pause(pausingPact.id, pauseFormData);
+      setShowPauseModal(false);
+      setPausingPact(null);
       loadPacts();
     } catch (error) {
-      console.error('更新状态失败', error);
+      console.error('暂停约定失败', error);
     }
+  };
+
+  const handleResume = async (pact: Pact) => {
+    if (!confirm(`确定要恢复「${pact.title}」吗？${pact.streakProtected && pact.savedStreak ? `\n\n将恢复 ${pact.savedStreak} 天的连续记录。` : ''}`)) {
+      return;
+    }
+    try {
+      await pactsApi.resume(pact.id);
+      loadPacts();
+    } catch (error) {
+      console.error('恢复约定失败', error);
+    }
+  };
+
+  const handleSetResumePlan = (pact: Pact) => {
+    setResumePlanPact(pact);
+    setResumePlanFormData({
+      resumeDate: pact.resumeDate || '',
+      resumeReminderEnabled: pact.resumeReminderEnabled !== false,
+      resumeReminderDays: pact.resumeReminderDays || 1,
+    });
+    setShowResumePlanModal(true);
+  };
+
+  const handleResumePlanSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resumePlanPact) return;
+    try {
+      await pactsApi.setResumePlan(resumePlanPact.id, resumePlanFormData);
+      setShowResumePlanModal(false);
+      setResumePlanPact(null);
+      loadPacts();
+    } catch (error) {
+      console.error('设置恢复计划失败', error);
+    }
+  };
+
+  const getDaysUntilResume = (resumeDate?: string) => {
+    if (!resumeDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const resume = new Date(resumeDate);
+    resume.setHours(0, 0, 0, 0);
+    const diff = Math.ceil((resume.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
   };
 
   const resetForm = () => {
@@ -210,80 +198,7 @@ function Pacts() {
       startDate: new Date().toISOString().split('T')[0],
       icon: '✨',
       color: '#9b59b6',
-      requireDualConfirmation: false,
     });
-  };
-
-  const toggleExpand = (pactId: string) => {
-    setExpandedPactId(expandedPactId === pactId ? null : pactId);
-  };
-
-  const openAddSubtask = (pactId: string) => {
-    setCurrentPactId(pactId);
-    setEditingSubtask(null);
-    const pact = pacts.find(p => p.id === pactId);
-    setSubtaskFormData({
-      title: '',
-      description: '',
-      targetCount: 10,
-      unit: '次',
-      deadline: '',
-      isMilestone: false,
-      milestoneReward: '',
-      icon: '📋',
-      color: pact?.color || '#9b59b6',
-    });
-    setShowSubtaskModal(true);
-  };
-
-  const openEditSubtask = (subtask: Subtask) => {
-    setCurrentPactId(subtask.pactId);
-    setEditingSubtask(subtask);
-    setSubtaskFormData({
-      title: subtask.title,
-      description: subtask.description,
-      targetCount: subtask.targetCount,
-      unit: subtask.unit,
-      deadline: subtask.deadline || '',
-      isMilestone: subtask.isMilestone,
-      milestoneReward: subtask.milestoneReward || '',
-      icon: subtask.icon || '📋',
-      color: subtask.color || '#9b59b6',
-    });
-    setShowSubtaskModal(true);
-  };
-
-  const handleSubtaskSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingSubtask) {
-        await subtasksApi.update(editingSubtask.id, subtaskFormData);
-      } else {
-        await subtasksApi.create({
-          ...subtaskFormData,
-          pactId: currentPactId,
-        });
-      }
-      setShowSubtaskModal(false);
-      loadSubtasks(currentPactId);
-    } catch (error) {
-      console.error('保存子任务失败', error);
-    }
-  };
-
-  const handleDeleteSubtask = async (id: string, pactId: string) => {
-    if (confirm('确定要删除这个子任务吗？')) {
-      try {
-        await subtasksApi.remove(id);
-        loadSubtasks(pactId);
-      } catch (error) {
-        console.error('删除子任务失败', error);
-      }
-    }
-  };
-
-  const getProgressPercent = (subtask: Subtask) => {
-    return Math.min(Math.round((subtask.currentCount / subtask.targetCount) * 100), 100);
   };
 
   return (
@@ -303,7 +218,7 @@ function Pacts() {
 
       <div className="filter-tabs">
         <div className="tab-group">
-          {['all', 'pending_confirmation', 'active', 'paused', 'completed'].map(status => (
+          {['all', 'active', 'paused', 'completed'].map(status => (
             <button
               key={status}
               className={`tab ${filter === status ? 'active' : ''}`}
@@ -328,12 +243,9 @@ function Pacts() {
 
       <div className="pacts-grid">
         {pacts.map(pact => {
-          const subtasks = subtasksMap[pact.id] || [];
-          const stats = subtaskStatsMap[pact.id];
-          const isExpanded = expandedPactId === pact.id;
-
+          const daysUntil = getDaysUntilResume(pact.resumeDate);
           return (
-            <div key={pact.id} className="pact-card card">
+            <div key={pact.id} className={`pact-card card ${pact.status === 'paused' ? 'pact-paused' : ''}`}>
               <div className="pact-card-header">
                 <div
                   className="pact-card-icon"
@@ -348,85 +260,61 @@ function Pacts() {
                   </span>
                 </div>
                 <div className="pact-card-menu">
-                  {pact.status === 'pending_confirmation' ? (
-                    <>
-                      {!pact.creatorConfirmed && (
-                        <button
-                          className="menu-btn confirm-btn"
-                          onClick={() => handleConfirm(pact.id, 'creator')}
-                          title="创建者确认"
-                        >
-                          ✅
-                        </button>
-                      )}
-                      {!pact.partnerConfirmed && (
-                        <button
-                          className="menu-btn confirm-btn"
-                          onClick={() => handleConfirm(pact.id, 'partner')}
-                          title="对方确认"
-                        >
-                          🤝
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <button className="menu-btn" onClick={() => handleEdit(pact)}>
-                        ✏️
-                      </button>
-                      <button className="menu-btn" onClick={() => toggleStatus(pact)}>
-                        {pact.status === 'active' ? '⏸️' : '▶️'}
-                      </button>
-                      <button className="menu-btn" onClick={() => handleDelete(pact.id)}>
-                        🗑️
-                      </button>
-                    </>
+                  <button className="menu-btn" onClick={() => handleEdit(pact)} title="编辑">
+                    ✏️
+                  </button>
+                  {pact.status === 'active' && (
+                    <button className="menu-btn" onClick={() => handlePauseClick(pact)} title="暂停">
+                      ⏸️
+                    </button>
                   )}
+                  {pact.status === 'paused' && (
+                    <button className="menu-btn" onClick={() => handleResume(pact)} title="立即恢复">
+                      ▶️
+                    </button>
+                  )}
+                  <button className="menu-btn" onClick={() => handleDelete(pact.id)} title="删除">
+                    🗑️
+                  </button>
                 </div>
               </div>
 
               <p className="pact-card-desc muted">{pact.description}</p>
 
-              {pact.status === 'pending_confirmation' && pact.requireDualConfirmation && (
-                <div className="pact-confirmation-status">
-                  <div className="confirmation-item">
-                    <span className={pact.creatorConfirmed ? 'confirmed' : 'unconfirmed'}>
-                      {pact.creatorConfirmed ? '✅' : '⏳'} 创建者
-                    </span>
+              {pact.status === 'paused' && pact.resumeDate && (
+                <div className="resume-plan-banner" style={{ borderColor: `${pact.color}40` }}>
+                  <div className="resume-plan-icon">📅</div>
+                  <div className="resume-plan-info">
+                    <div className="resume-plan-title">
+                      {daysUntil !== null && daysUntil > 0
+                        ? `${daysUntil} 天后恢复`
+                        : daysUntil === 0
+                          ? '今天恢复'
+                          : '恢复日期已过'}
+                    </div>
+                    <div className="resume-plan-date muted">{pact.resumeDate}</div>
                   </div>
-                  <div className="confirmation-item">
-                    <span className={pact.partnerConfirmed ? 'confirmed' : 'unconfirmed'}>
-                      {pact.partnerConfirmed ? '✅' : '⏳'} 对方
-                    </span>
-                  </div>
-                  <p className="confirmation-hint muted">
-                    双方确认后约定即可生效，届时将开启打卡和提醒
-                  </p>
+                  <button
+                    className="resume-plan-edit-btn"
+                    onClick={() => handleSetResumePlan(pact)}
+                    style={{ color: pact.color }}
+                  >
+                    ✏️ 修改
+                  </button>
                 </div>
               )}
 
-              {stats && stats.total > 0 && (
-                <div className="pact-subtask-overview">
-                  <div className="subtask-overview-header">
-                    <span className="subtask-overview-icon">🎯</span>
-                    <span className="subtask-overview-title">阶段目标</span>
-                    <span className="subtask-overview-count">
-                      {stats.completed}/{stats.total} 完成
-                    </span>
-                  </div>
-                  <div className="subtask-overview-progress">
-                    <div
-                      className="subtask-overview-progress-bar"
-                      style={{
-                        width: `${stats.overallProgress}%`,
-                        backgroundColor: pact.color,
-                      }}
-                    />
-                  </div>
-                  <div className="subtask-overview-stats">
-                    <span className="muted">总体进度 {stats.overallProgress}%</span>
-                    <span className="muted">完成率 {stats.completionRate}%</span>
-                  </div>
+              {pact.status === 'paused' && !pact.resumeDate && (
+                <div className="resume-plan-empty" onClick={() => handleSetResumePlan(pact)}>
+                  <span className="resume-plan-empty-icon">📋</span>
+                  <span className="resume-plan-empty-text">设置恢复计划</span>
+                  <span className="resume-plan-empty-arrow">→</span>
+                </div>
+              )}
+
+              {pact.status === 'paused' && pact.streakProtected && pact.savedStreak !== undefined && pact.savedStreak > 0 && (
+                <div className="streak-protection-badge">
+                  🔒 连续记录保护中 · 保存 {pact.savedStreak} 天
                 </div>
               )}
 
@@ -451,141 +339,6 @@ function Pacts() {
                 <span className="muted">{categoryLabels[pact.category]}</span>
                 <span className="muted">开始于 {pact.startDate}</span>
               </div>
-
-              {pact.category === 'special' && getCountdownForPact(pact.id) && (() => {
-                const cd = getCountdownForPact(pact.id)!;
-                return (
-                  <div className="pact-countdown-tag">
-                    <span className="countdown-tag-icon">⏳</span>
-                    <span className="countdown-tag-text">
-                      {cd.isToday ? '🎉 今天！' : `还有 ${cd.daysLeft} 天`}
-                    </span>
-                    {cd.atmosphere && cd.atmosphere !== 'none' && (
-                      <span className="countdown-tag-atmosphere">
-                        {cd.atmosphere === 'romantic' ? '💕' : '🎊'}
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {subtasks.length > 0 && (
-                <button
-                  className="expand-subtasks-btn"
-                  onClick={() => toggleExpand(pact.id)}
-                >
-                  <span>{isExpanded ? '收起' : '展开'}阶段目标</span>
-                  <span className={`expand-arrow ${isExpanded ? 'expanded' : ''}`}>▼</span>
-                </button>
-              )}
-
-              {isExpanded && (
-                <div className="subtasks-list">
-                  {subtasks.map(subtask => (
-                    <div
-                      key={subtask.id}
-                      className={`subtask-item ${subtask.status === 'completed' ? 'completed' : ''}`}
-                    >
-                      <div className="subtask-header">
-                        <div
-                          className="subtask-icon"
-                          style={{
-                            backgroundColor: `${subtask.color || pact.color}20`,
-                            color: subtask.color || pact.color,
-                          }}
-                        >
-                          {subtask.icon || '📋'}
-                        </div>
-                        <div className="subtask-info">
-                          <div className="subtask-title">
-                            {subtask.title}
-                            {subtask.isMilestone && (
-                              <span className="milestone-badge">🏆 里程碑</span>
-                            )}
-                          </div>
-                          <div className="subtask-meta muted">
-                            <span>{subtaskStatusLabels[subtask.status]}</span>
-                            <span>·</span>
-                            <span>
-                              {subtask.currentCount}/{subtask.targetCount} {subtask.unit}
-                            </span>
-                            {subtask.deadline && (
-                              <>
-                                <span>·</span>
-                                <span>截止: {subtask.deadline}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="subtask-actions">
-                          <button
-                            className="subtask-action-btn"
-                            onClick={() => openEditSubtask(subtask)}
-                            title="编辑子任务"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            className="subtask-action-btn delete"
-                            onClick={() => handleDeleteSubtask(subtask.id, pact.id)}
-                            title="删除子任务"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                      <div className="subtask-progress-bar">
-                        <div
-                          className="subtask-progress-fill"
-                          style={{
-                            width: `${getProgressPercent(subtask)}%`,
-                            backgroundColor: subtask.color || pact.color,
-                          }}
-                        />
-                      </div>
-                      {subtask.description && (
-                        <p className="subtask-desc muted">{subtask.description}</p>
-                      )}
-                      {subtask.isMilestone && subtask.milestoneReward && (
-                        <div className="milestone-reward">
-                          <span className="milestone-reward-label">🎁 奖励：</span>
-                          {subtask.milestoneReward}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {pact.status === 'active' && (
-                    <button
-                      className="add-subtask-btn"
-                      onClick={() => openAddSubtask(pact.id)}
-                    >
-                      + 添加子任务
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {!isExpanded && subtasks.length > 0 && pact.status === 'active' && (
-                <button
-                  className="add-subtask-inline-btn"
-                  onClick={() => {
-                    setExpandedPactId(pact.id);
-                    openAddSubtask(pact.id);
-                  }}
-                >
-                  + 添加子任务
-                </button>
-              )}
-
-              {subtasks.length === 0 && pact.status === 'active' && (
-                <button
-                  className="add-subtask-inline-btn"
-                  onClick={() => openAddSubtask(pact.id)}
-                >
-                  + 添加阶段目标
-                </button>
-              )}
             </div>
           );
         })}
@@ -690,22 +443,6 @@ function Pacts() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={formData.requireDualConfirmation}
-                    onChange={e =>
-                      setFormData({ ...formData, requireDualConfirmation: e.target.checked })
-                    }
-                  />
-                  <span>需要双方确认后生效</span>
-                </label>
-                <p className="checkbox-hint muted">
-                  开启后，约定需双方确认才可打卡和接收提醒
-                </p>
-              </div>
-
               <div className="modal-actions">
                 <button
                   type="button"
@@ -723,126 +460,157 @@ function Pacts() {
         </div>
       )}
 
-      {showSubtaskModal && (
-        <div className="modal-overlay" onClick={() => setShowSubtaskModal(false)}>
-          <div className="modal card subtask-modal" onClick={e => e.stopPropagation()}>
+      {showPauseModal && pausingPact && (
+        <div className="modal-overlay" onClick={() => setShowPauseModal(false)}>
+          <div className="modal card" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingSubtask ? '编辑子任务' : '添加子任务'}</h3>
-              <button className="close-btn" onClick={() => setShowSubtaskModal(false)}>
+              <h3>
+                ⏸️ 暂停「{pausingPact.title}」
+              </h3>
+              <button className="close-btn" onClick={() => setShowPauseModal(false)}>
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSubtaskSubmit}>
+            <form onSubmit={handlePauseSubmit}>
               <div className="form-group">
-                <label>子任务名称</label>
+                <label>暂停原因（可选）</label>
+                <textarea
+                  value={pauseFormData.pauseReason}
+                  onChange={e => setPauseFormData({ ...pauseFormData, pauseReason: e.target.value })}
+                  placeholder="为什么要暂停这个约定呢？"
+                  rows={3}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>
+                  📅 计划恢复日期
+                </label>
                 <input
-                  type="text"
-                  value={subtaskFormData.title}
-                  onChange={e => setSubtaskFormData({ ...subtaskFormData, title: e.target.value })}
-                  placeholder="比如：读完10本书"
+                  type="date"
+                  value={pauseFormData.resumeDate}
+                  onChange={e => setPauseFormData({ ...pauseFormData, resumeDate: e.target.value })}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+                <span className="form-hint muted">设置一个日期，到时候会自动提醒你恢复</span>
+              </div>
+
+              <div className="form-group">
+                <div className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    id="resumeReminder"
+                    checked={pauseFormData.resumeReminderEnabled}
+                    onChange={e => setPauseFormData({ ...pauseFormData, resumeReminderEnabled: e.target.checked })}
+                  />
+                  <label htmlFor="resumeReminder">开启恢复提醒</label>
+                </div>
+                {pauseFormData.resumeReminderEnabled && (
+                  <div className="form-sub-group">
+                    <label>提前几天提醒</label>
+                    <select
+                      value={pauseFormData.resumeReminderDays}
+                      onChange={e => setPauseFormData({ ...pauseFormData, resumeReminderDays: parseInt(e.target.value, 10) })}
+                    >
+                      <option value={1}>提前 1 天</option>
+                      <option value={2}>提前 2 天</option>
+                      <option value={3}>提前 3 天</option>
+                      <option value={7}>提前 7 天</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <div className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    id="streakProtected"
+                    checked={pauseFormData.streakProtected}
+                    onChange={e => setPauseFormData({ ...pauseFormData, streakProtected: e.target.checked })}
+                  />
+                  <label htmlFor="streakProtected">
+                    🔒 连续记录保护
+                  </label>
+                </div>
+                <span className="form-hint muted">
+                  开启后，暂停期间会保存当前的连续记录（{pausingPact.currentStreak} 天），恢复时自动恢复
+                </span>
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowPauseModal(false)}
+                >
+                  取消
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  确认暂停
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showResumePlanModal && resumePlanPact && (
+        <div className="modal-overlay" onClick={() => setShowResumePlanModal(false)}>
+          <div className="modal card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                📋 设置恢复计划
+              </h3>
+              <button className="close-btn" onClick={() => setShowResumePlanModal(false)}>
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleResumePlanSubmit}>
+              <div className="form-group">
+                <label>
+                  📅 计划恢复日期
+                </label>
+                <input
+                  type="date"
+                  value={resumePlanFormData.resumeDate}
+                  onChange={e => setResumePlanFormData({ ...resumePlanFormData, resumeDate: e.target.value })}
+                  min={new Date().toISOString().split('T')[0]}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>任务描述</label>
-                <textarea
-                  value={subtaskFormData.description}
-                  onChange={e => setSubtaskFormData({ ...subtaskFormData, description: e.target.value })}
-                  placeholder="描述这个子任务的具体内容..."
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>目标数量</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={subtaskFormData.targetCount}
-                    onChange={e => setSubtaskFormData({ ...subtaskFormData, targetCount: parseInt(e.target.value) || 1 })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>单位</label>
-                  <input
-                    type="text"
-                    value={subtaskFormData.unit}
-                    onChange={e => setSubtaskFormData({ ...subtaskFormData, unit: e.target.value })}
-                    placeholder="如：次、本、天"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>截止日期（选填）</label>
-                <input
-                  type="date"
-                  value={subtaskFormData.deadline}
-                  onChange={e => setSubtaskFormData({ ...subtaskFormData, deadline: e.target.value })}
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>选择图标</label>
-                  <div className="icon-picker small">
-                    {['📋', '📚', '🎯', '🏃', '💪', '🌟', '🎨', '🎵', '📖', '✨', '🌱', '💝'].map(icon => (
-                      <button
-                        key={icon}
-                        type="button"
-                        className={`icon-option ${subtaskFormData.icon === icon ? 'selected' : ''}`}
-                        onClick={() => setSubtaskFormData({ ...subtaskFormData, icon })}
-                      >
-                        {icon}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>选择颜色</label>
-                  <div className="color-picker small">
-                    {colorOptions.map(color => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={`color-option ${subtaskFormData.color === color ? 'selected' : ''}`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setSubtaskFormData({ ...subtaskFormData, color })}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="checkbox-label">
+                <div className="checkbox-item">
                   <input
                     type="checkbox"
-                    checked={subtaskFormData.isMilestone}
-                    onChange={e =>
-                      setSubtaskFormData({ ...subtaskFormData, isMilestone: e.target.checked })
-                    }
+                    id="resumePlanReminder"
+                    checked={resumePlanFormData.resumeReminderEnabled}
+                    onChange={e => setResumePlanFormData({ ...resumePlanFormData, resumeReminderEnabled: e.target.checked })}
                   />
-                  <span>设为里程碑</span>
-                </label>
-                <p className="checkbox-hint muted">
-                  里程碑任务完成时会在时间线生成特别纪念
-                </p>
+                  <label htmlFor="resumePlanReminder">开启恢复提醒</label>
+                </div>
+                {resumePlanFormData.resumeReminderEnabled && (
+                  <div className="form-sub-group">
+                    <label>提前几天提醒</label>
+                    <select
+                      value={resumePlanFormData.resumeReminderDays}
+                      onChange={e => setResumePlanFormData({ ...resumePlanFormData, resumeReminderDays: parseInt(e.target.value, 10) })}
+                    >
+                      <option value={1}>提前 1 天</option>
+                      <option value={2}>提前 2 天</option>
+                      <option value={3}>提前 3 天</option>
+                      <option value={7}>提前 7 天</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
-              {subtaskFormData.isMilestone && (
-                <div className="form-group">
-                  <label>里程碑奖励（选填）</label>
-                  <input
-                    type="text"
-                    value={subtaskFormData.milestoneReward}
-                    onChange={e => setSubtaskFormData({ ...subtaskFormData, milestoneReward: e.target.value })}
-                    placeholder="比如：一起去旅行"
-                  />
+              {resumePlanPact.streakProtected && resumePlanPact.savedStreak !== undefined && resumePlanPact.savedStreak > 0 && (
+                <div className="info-banner">
+                  🔒 连续记录保护已开启，恢复后将继续 {resumePlanPact.savedStreak} 天的连续记录
                 </div>
               )}
 
@@ -850,12 +618,12 @@ function Pacts() {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setShowSubtaskModal(false)}
+                  onClick={() => setShowResumePlanModal(false)}
                 >
                   取消
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {editingSubtask ? '保存修改' : '添加子任务'}
+                  保存计划
                 </button>
               </div>
             </form>
@@ -931,6 +699,10 @@ function Pacts() {
           position: relative;
         }
 
+        .pact-card.pact-paused {
+          opacity: 0.85;
+        }
+
         .pact-card-header {
           display: flex;
           align-items: flex-start;
@@ -983,55 +755,88 @@ function Pacts() {
           line-height: 1.6;
         }
 
-        .pact-subtask-overview {
-          padding: 12px 16px;
-          background: rgba(108, 92, 231, 0.08);
-          border-radius: 10px;
-          margin-bottom: 16px;
-          border: 1px solid rgba(108, 92, 231, 0.15);
-        }
-
-        .subtask-overview-header {
+        .resume-plan-banner {
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 10px;
+          gap: 12px;
+          padding: 12px 14px;
+          background: rgba(108, 92, 231, 0.08);
+          border: 1px solid rgba(108, 92, 231, 0.2);
+          border-radius: 10px;
+          margin-bottom: 16px;
         }
 
-        .subtask-overview-icon {
-          font-size: 16px;
+        .resume-plan-icon {
+          font-size: 22px;
+          flex-shrink: 0;
         }
 
-        .subtask-overview-title {
-          font-weight: 600;
-          font-size: 14px;
+        .resume-plan-info {
           flex: 1;
+          min-width: 0;
         }
 
-        .subtask-overview-count {
-          font-size: 13px;
-          font-weight: 500;
-          color: var(--primary);
+        .resume-plan-title {
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 2px;
         }
 
-        .subtask-overview-progress {
-          height: 6px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 3px;
-          overflow: hidden;
-          margin-bottom: 8px;
-        }
-
-        .subtask-overview-progress-bar {
-          height: 100%;
-          border-radius: 3px;
-          transition: width 0.3s ease;
-        }
-
-        .subtask-overview-stats {
-          display: flex;
-          justify-content: space-between;
+        .resume-plan-date {
           font-size: 12px;
+        }
+
+        .resume-plan-edit-btn {
+          background: none;
+          border: none;
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .resume-plan-empty {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 14px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px dashed rgba(255, 255, 255, 0.15);
+          border-radius: 10px;
+          margin-bottom: 16px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .resume-plan-empty:hover {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .resume-plan-empty-icon {
+          font-size: 18px;
+        }
+
+        .resume-plan-empty-text {
+          flex: 1;
+          font-size: 13px;
+          color: var(--text-muted);
+        }
+
+        .resume-plan-empty-arrow {
+          font-size: 14px;
+          color: var(--text-muted);
+        }
+
+        .streak-protection-badge {
+          display: inline-block;
+          padding: 6px 12px;
+          background: rgba(243, 156, 18, 0.12);
+          color: #f39c12;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 500;
+          margin-bottom: 16px;
         }
 
         .pact-card-stats {
@@ -1061,273 +866,6 @@ function Pacts() {
           display: flex;
           justify-content: space-between;
           font-size: 12px;
-        }
-
-        .pact-countdown-tag {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin-top: 12px;
-          padding: 8px 12px;
-          background: rgba(108, 92, 231, 0.1);
-          border-radius: 8px;
-          font-size: 13px;
-        }
-
-        .countdown-tag-icon {
-          font-size: 14px;
-        }
-
-        .countdown-tag-text {
-          color: var(--primary);
-          font-weight: 500;
-        }
-
-        .countdown-tag-atmosphere {
-          margin-left: auto;
-          font-size: 14px;
-        }
-
-        .badge-pending_confirmation {
-          background: rgba(243, 156, 18, 0.2);
-          color: #f39c12;
-        }
-
-        .pact-confirmation-status {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-          padding: 12px 16px;
-          background: rgba(243, 156, 18, 0.08);
-          border-radius: 10px;
-          margin-bottom: 16px;
-        }
-
-        .confirmation-item {
-          font-size: 14px;
-        }
-
-        .confirmation-item .confirmed {
-          color: #27ae60;
-        }
-
-        .confirmation-item .unconfirmed {
-          color: #f39c12;
-        }
-
-        .confirmation-hint {
-          width: 100%;
-          font-size: 12px;
-          margin-top: 4px;
-        }
-
-        .confirm-btn {
-          background: rgba(39, 174, 96, 0.15) !important;
-        }
-
-        .confirm-btn:hover {
-          background: rgba(39, 174, 96, 0.3) !important;
-        }
-
-        .checkbox-label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          cursor: pointer;
-          font-size: 15px;
-        }
-
-        .checkbox-label input[type='checkbox'] {
-          width: 18px;
-          height: 18px;
-          accent-color: var(--primary);
-        }
-
-        .checkbox-hint {
-          font-size: 12px;
-          margin-top: 6px;
-          margin-left: 26px;
-        }
-
-        .expand-subtasks-btn {
-          width: 100%;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 8px;
-          padding: 10px;
-          margin-top: 12px;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 8px;
-          color: var(--text-muted);
-          font-size: 13px;
-          transition: all 0.2s;
-        }
-
-        .expand-subtasks-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-          color: var(--text-color);
-        }
-
-        .expand-arrow {
-          font-size: 10px;
-          transition: transform 0.2s;
-        }
-
-        .expand-arrow.expanded {
-          transform: rotate(180deg);
-        }
-
-        .subtasks-list {
-          margin-top: 16px;
-          padding-top: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .subtask-item {
-          padding: 14px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 10px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          transition: all 0.2s;
-        }
-
-        .subtask-item:hover {
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .subtask-item.completed {
-          opacity: 0.7;
-        }
-
-        .subtask-header {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 10px;
-        }
-
-        .subtask-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 18px;
-          flex-shrink: 0;
-        }
-
-        .subtask-info {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .subtask-title {
-          font-size: 14px;
-          font-weight: 500;
-          margin-bottom: 4px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .milestone-badge {
-          font-size: 10px;
-          padding: 2px 6px;
-          background: linear-gradient(135deg, #f39c12, #e67e22);
-          color: white;
-          border-radius: 8px;
-          font-weight: 500;
-        }
-
-        .subtask-meta {
-          font-size: 12px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          flex-wrap: wrap;
-        }
-
-        .subtask-actions {
-          display: flex;
-          gap: 4px;
-        }
-
-        .subtask-action-btn {
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
-          background: rgba(255, 255, 255, 0.05);
-          font-size: 12px;
-          transition: background 0.2s;
-        }
-
-        .subtask-action-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-
-        .subtask-action-btn.delete:hover {
-          background: rgba(255, 71, 87, 0.2);
-        }
-
-        .subtask-progress-bar {
-          height: 4px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 2px;
-          overflow: hidden;
-          margin-bottom: 10px;
-        }
-
-        .subtask-progress-fill {
-          height: 100%;
-          border-radius: 2px;
-          transition: width 0.3s ease;
-        }
-
-        .subtask-desc {
-          font-size: 12px;
-          line-height: 1.5;
-          margin-bottom: 8px;
-        }
-
-        .milestone-reward {
-          font-size: 12px;
-          padding: 8px 12px;
-          background: rgba(243, 156, 18, 0.1);
-          border-radius: 8px;
-          border-left: 3px solid #f39c12;
-          color: #f39c12;
-        }
-
-        .milestone-reward-label {
-          font-weight: 500;
-        }
-
-        .add-subtask-btn,
-        .add-subtask-inline-btn {
-          width: 100%;
-          padding: 12px;
-          border: 2px dashed rgba(255, 255, 255, 0.15);
-          border-radius: 10px;
-          background: transparent;
-          color: var(--text-muted);
-          font-size: 13px;
-          transition: all 0.2s;
-        }
-
-        .add-subtask-btn:hover,
-        .add-subtask-inline-btn:hover {
-          border-color: var(--primary);
-          color: var(--primary);
-          background: rgba(108, 92, 231, 0.05);
-        }
-
-        .add-subtask-inline-btn {
-          margin-top: 12px;
         }
 
         .empty-state.full {
@@ -1365,10 +903,6 @@ function Pacts() {
           overflow-y: auto;
         }
 
-        .subtask-modal {
-          max-width: 480px;
-        }
-
         .modal-header {
           display: flex;
           justify-content: space-between;
@@ -1390,6 +924,61 @@ function Pacts() {
           font-size: 16px;
         }
 
+        .form-group {
+          margin-bottom: 20px;
+        }
+
+        .form-group label {
+          display: block;
+          font-size: 14px;
+          font-weight: 500;
+          margin-bottom: 8px;
+        }
+
+        .form-hint {
+          display: block;
+          font-size: 12px;
+          margin-top: 6px;
+        }
+
+        .form-sub-group {
+          margin-top: 12px;
+          margin-left: 28px;
+        }
+
+        .form-sub-group label {
+          font-size: 13px;
+          margin-bottom: 6px;
+        }
+
+        .checkbox-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+        }
+
+        .checkbox-item label {
+          margin-bottom: 0;
+          cursor: pointer;
+          font-size: 14px;
+        }
+
+        .info-banner {
+          padding: 12px 16px;
+          background: rgba(243, 156, 18, 0.1);
+          border: 1px solid rgba(243, 156, 18, 0.2);
+          border-radius: 10px;
+          font-size: 13px;
+          color: #f39c12;
+          margin-bottom: 20px;
+        }
+
         .form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -1400,12 +989,6 @@ function Pacts() {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
-        }
-
-        .icon-picker.small .icon-option {
-          width: 36px;
-          height: 36px;
-          font-size: 18px;
         }
 
         .icon-option {
@@ -1435,11 +1018,6 @@ function Pacts() {
           gap: 10px;
         }
 
-        .color-picker.small .color-option {
-          width: 26px;
-          height: 26px;
-        }
-
         .color-option {
           width: 32px;
           height: 32px;
@@ -1460,6 +1038,34 @@ function Pacts() {
           justify-content: flex-end;
           gap: 12px;
           margin-top: 24px;
+        }
+
+        .badge {
+          display: inline-block;
+          padding: 3px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+
+        .badge-active {
+          background: rgba(0, 184, 148, 0.15);
+          color: #00b894;
+        }
+
+        .badge-paused {
+          background: rgba(253, 121, 168, 0.15);
+          color: #fd79a8;
+        }
+
+        .badge-completed {
+          background: rgba(108, 92, 231, 0.15);
+          color: #6c5ce7;
+        }
+
+        .badge-pending_confirmation {
+          background: rgba(253, 203, 110, 0.15);
+          color: #fdcb6e;
         }
 
         @media (max-width: 768px) {

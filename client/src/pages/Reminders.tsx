@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { remindersApi, pactsApi, countdownApi } from '../services/api';
-import type { Reminder, Pact, CountdownItem } from '../types';
+import { remindersApi, pactsApi } from '../services/api';
+import type { Reminder, Pact } from '../types';
 
 const repeatLabels: Record<string, string> = {
   none: '不重复',
@@ -19,24 +19,15 @@ const typeLabels: Record<string, string> = {
 function Reminders() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [pacts, setPacts] = useState<Pact[]>([]);
-  const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState<{
-    title: string;
-    description: string;
-    type: Reminder['type'];
-    date: string;
-    time: string;
-    repeat: Reminder['repeat'];
-    pactId: string;
-  }>({
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: 'custom',
+    type: 'custom' as const,
     date: '',
     time: '09:00',
-    repeat: 'none',
+    repeat: 'none' as const,
     pactId: '',
   });
 
@@ -46,24 +37,16 @@ function Reminders() {
 
   const loadData = async () => {
     try {
-      const [remindersData, pactsData, countdownData] = await Promise.all([
+      const [remindersData, pactsData] = await Promise.all([
         remindersApi.findAll(filter === 'all' ? undefined : filter === 'active'),
         pactsApi.findAll('active'),
-        countdownApi.findAll(),
       ]);
       setReminders(remindersData);
       setPacts(pactsData);
-      setCountdowns(countdownData);
     } catch (error) {
       console.error('加载提醒失败', error);
     }
   };
-
-  const upcomingCountdowns = countdowns.filter(c => c.isNear || c.isToday);
-
-  const anniversaryReminders = reminders.filter(
-    r => r.type === 'anniversary' && r.isActive,
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,64 +127,6 @@ function Reminders() {
       </div>
 
       <div className="reminders-list">
-        {upcomingCountdowns.length > 0 && (
-          <div className="upcoming-events-section">
-            <div className="upcoming-events-title">
-              <span>📅 即将到来的纪念事件</span>
-            </div>
-            <div className="upcoming-events-grid">
-              {upcomingCountdowns.map(cd => {
-                const relatedReminders = anniversaryReminders.filter(
-                  r => cd.type === 'anniversary' || cd.pactId === r.pactId,
-                );
-                return (
-                  <div
-                    key={cd.id}
-                    className={`upcoming-event-card card ${cd.isToday ? 'event-today' : ''}`}
-                  >
-                    <div className="event-card-header">
-                      <div className="event-card-icon" style={{ color: cd.isToday ? '#e91e63' : cd.color }}>
-                        {cd.icon}
-                      </div>
-                      <div className="event-card-info">
-                        <div className="event-card-name">{cd.title}</div>
-                        <div className="event-card-date muted">{cd.targetDate}</div>
-                      </div>
-                      <div className="event-card-countdown">
-                        {cd.isToday ? (
-                          <span className="event-countdown-today">🎉 今天</span>
-                        ) : (
-                          <span className="event-countdown-days" style={{ color: cd.color }}>
-                            {cd.daysLeft}<small>天</small>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {cd.atmosphere && cd.atmosphere !== 'none' && (
-                      <div className="event-atmosphere">
-                        {cd.atmosphere === 'romantic' ? '💕 浪漫氛围已自动切换' : '🎊 喜庆氛围已自动切换'}
-                      </div>
-                    )}
-                    {relatedReminders.length > 0 && (
-                      <div className="event-reminders">
-                        {relatedReminders.map(r => (
-                          <div key={r.id} className="event-reminder-row">
-                            <span className="event-reminder-bell">🔔</span>
-                            <span className="event-reminder-title">{r.title}</span>
-                            <span className="event-reminder-schedule muted">
-                              {r.time} · {repeatLabels[r.repeat]}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {reminders.map(reminder => {
           const pact = getPact(reminder.pactId);
           return (
@@ -443,128 +368,6 @@ function Reminders() {
           display: flex;
           flex-direction: column;
           gap: 16px;
-        }
-
-        .upcoming-events-section {
-          margin-bottom: 8px;
-        }
-
-        .upcoming-events-title {
-          font-size: 16px;
-          font-weight: 600;
-          margin-bottom: 14px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .upcoming-events-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 14px;
-          margin-bottom: 16px;
-        }
-
-        .upcoming-event-card {
-          padding: 18px 20px;
-          border: 1px solid rgba(108, 92, 231, 0.15);
-          background: linear-gradient(135deg, rgba(108, 92, 231, 0.06), rgba(253, 121, 168, 0.04));
-        }
-
-        .upcoming-event-card.event-today {
-          border-color: rgba(233, 30, 99, 0.4);
-          background: linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(253, 121, 168, 0.06));
-        }
-
-        .event-card-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 8px;
-        }
-
-        .event-card-icon {
-          font-size: 24px;
-          flex-shrink: 0;
-        }
-
-        .event-card-info {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .event-card-name {
-          font-size: 15px;
-          font-weight: 600;
-          margin-bottom: 2px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .event-card-date {
-          font-size: 12px;
-        }
-
-        .event-card-countdown {
-          text-align: right;
-          flex-shrink: 0;
-        }
-
-        .event-countdown-today {
-          font-size: 16px;
-          font-weight: 700;
-          color: #e91e63;
-        }
-
-        .event-countdown-days {
-          font-size: 24px;
-          font-weight: 700;
-          line-height: 1;
-        }
-
-        .event-countdown-days small {
-          font-size: 12px;
-          font-weight: 400;
-          margin-left: 2px;
-        }
-
-        .event-atmosphere {
-          font-size: 12px;
-          color: var(--accent);
-          margin-bottom: 8px;
-          padding: 3px 8px;
-          background: rgba(253, 121, 168, 0.1);
-          border-radius: 10px;
-          display: inline-block;
-        }
-
-        .event-reminders {
-          margin-top: 8px;
-          padding: 8px 12px;
-          background: rgba(255, 255, 255, 0.04);
-          border-radius: 8px;
-        }
-
-        .event-reminder-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 13px;
-          padding: 3px 0;
-        }
-
-        .event-reminder-bell {
-          font-size: 12px;
-        }
-
-        .event-reminder-title {
-          font-weight: 500;
-        }
-
-        .event-reminder-schedule {
-          margin-left: auto;
-          font-size: 12px;
         }
 
         .reminder-card {
