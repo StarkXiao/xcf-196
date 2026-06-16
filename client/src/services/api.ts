@@ -23,6 +23,8 @@ export const pactsApi = {
   create: (data: Partial<Pact>) => api.post<Pact>('/pacts', data).then(res => res.data),
   update: (id: string, data: Partial<Pact>) =>
     api.patch<Pact>(`/pacts/${id}`, data).then(res => res.data),
+  confirm: (id: string, role: 'creator' | 'partner') =>
+    api.post<Pact>(`/pacts/${id}/confirm`, { role }).then(res => res.data),
   remove: (id: string) => api.delete(`/pacts/${id}`),
   getStats: () => api.get<PactStats>('/pacts/stats').then(res => res.data),
 };

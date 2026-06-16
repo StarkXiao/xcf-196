@@ -27,6 +27,11 @@ export class PactsController {
     return this.pactsService.create(createPactDto);
   }
 
+  @Post(':id/confirm')
+  confirm(@Param('id') id: string, @Body() body: { role: 'creator' | 'partner' }) {
+    return this.pactsService.confirm(id, body.role);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePactDto: UpdatePactDto) {
     return this.pactsService.update(id, updatePactDto);

@@ -38,4 +38,8 @@ export class CreatePactDto {
   @IsBoolean()
   @IsOptional()
   requireMakeupReason?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  requireDualConfirmation?: boolean;
 }

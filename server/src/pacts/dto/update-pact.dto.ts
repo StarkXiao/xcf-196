@@ -29,9 +29,9 @@ export class UpdatePactDto {
   @IsOptional()
   icon?: string;
 
-  @IsEnum(['active', 'completed', 'paused'])
+  @IsEnum(['pending_confirmation', 'active', 'completed', 'paused'])
   @IsOptional()
-  status?: 'active' | 'completed' | 'paused';
+  status?: 'pending_confirmation' | 'active' | 'completed' | 'paused';
 
   @IsInt()
   @Min(0)
@@ -65,4 +65,20 @@ export class UpdatePactDto {
   @IsBoolean()
   @IsOptional()
   requireMakeupReason?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  requireDualConfirmation?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  creatorConfirmed?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  partnerConfirmed?: boolean;
+
+  @IsDateString()
+  @IsOptional()
+  confirmedAt?: string;
 }

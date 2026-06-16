@@ -1,16 +1,33 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { mockReminders, Reminder } from '../data/seed';
+import { PactsService } from '../pacts/pacts.service';
 
 @Injectable()
 export class RemindersService {
   private reminders: Reminder[] = [...mockReminders];
+
+  constructor(
+    @Inject(forwardRef(() => PactsService))
+    private readonly pactsService: PactsService,
+  ) {}
 
   findAll(isActive?: boolean): Reminder[] {
     let result = [...this.reminders];
     if (isActive !== undefined) {
       result = result.filter(r => r.isActive === isActive);
     }
+    result = result.filter(r => {
+      if (r.pactId && r.type === 'pact') {
+        try {
+          const pact = this.pactsService.findOne(r.pactId);
+          return pact.status !== 'pending_confirmation';
+        } catch {
+          return true;
+        }
+      }
+      return true;
+    });
     return result;
   }
 

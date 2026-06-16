@@ -10,6 +10,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
+  pending_confirmation: '待确认',
   active: '进行中',
   paused: '已暂停',
   completed: '已完成',
@@ -42,6 +43,7 @@ function Pacts() {
     startDate: string;
     icon: string;
     color: string;
+    requireDualConfirmation: boolean;
   }>({
     title: '',
     description: '',
@@ -49,6 +51,7 @@ function Pacts() {
     startDate: new Date().toISOString().split('T')[0],
     icon: '✨',
     color: '#9b59b6',
+    requireDualConfirmation: false,
   });
 
   useEffect(() => {
@@ -91,8 +94,18 @@ function Pacts() {
       startDate: pact.startDate,
       icon: pact.icon,
       color: pact.color,
+      requireDualConfirmation: pact.requireDualConfirmation,
     });
     setShowModal(true);
+  };
+
+  const handleConfirm = async (pactId: string, role: 'creator' | 'partner') => {
+    try {
+      await pactsApi.confirm(pactId, role);
+      loadPacts();
+    } catch (error) {
+      console.error('确认约定失败', error);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -125,6 +138,7 @@ function Pacts() {
       startDate: new Date().toISOString().split('T')[0],
       icon: '✨',
       color: '#9b59b6',
+      requireDualConfirmation: false,
     });
   };
 
@@ -145,7 +159,7 @@ function Pacts() {
 
       <div className="filter-tabs">
         <div className="tab-group">
-          {['all', 'active', 'paused', 'completed'].map(status => (
+          {['all', 'pending_confirmation', 'active', 'paused', 'completed'].map(status => (
             <button
               key={status}
               className={`tab ${filter === status ? 'active' : ''}`}
@@ -185,19 +199,62 @@ function Pacts() {
                 </span>
               </div>
               <div className="pact-card-menu">
-                <button className="menu-btn" onClick={() => handleEdit(pact)}>
-                  ✏️
-                </button>
-                <button className="menu-btn" onClick={() => toggleStatus(pact)}>
-                  {pact.status === 'active' ? '⏸️' : '▶️'}
-                </button>
-                <button className="menu-btn" onClick={() => handleDelete(pact.id)}>
-                  🗑️
-                </button>
+                {pact.status === 'pending_confirmation' ? (
+                  <>
+                    {!pact.creatorConfirmed && (
+                      <button
+                        className="menu-btn confirm-btn"
+                        onClick={() => handleConfirm(pact.id, 'creator')}
+                        title="创建者确认"
+                      >
+                        ✅
+                      </button>
+                    )}
+                    {!pact.partnerConfirmed && (
+                      <button
+                        className="menu-btn confirm-btn"
+                        onClick={() => handleConfirm(pact.id, 'partner')}
+                        title="对方确认"
+                      >
+                        🤝
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button className="menu-btn" onClick={() => handleEdit(pact)}>
+                      ✏️
+                    </button>
+                    <button className="menu-btn" onClick={() => toggleStatus(pact)}>
+                      {pact.status === 'active' ? '⏸️' : '▶️'}
+                    </button>
+                    <button className="menu-btn" onClick={() => handleDelete(pact.id)}>
+                      🗑️
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
             <p className="pact-card-desc muted">{pact.description}</p>
+
+            {pact.status === 'pending_confirmation' && pact.requireDualConfirmation && (
+              <div className="pact-confirmation-status">
+                <div className="confirmation-item">
+                  <span className={pact.creatorConfirmed ? 'confirmed' : 'unconfirmed'}>
+                    {pact.creatorConfirmed ? '✅' : '⏳'} 创建者
+                  </span>
+                </div>
+                <div className="confirmation-item">
+                  <span className={pact.partnerConfirmed ? 'confirmed' : 'unconfirmed'}>
+                    {pact.partnerConfirmed ? '✅' : '⏳'} 对方
+                  </span>
+                </div>
+                <p className="confirmation-hint muted">
+                  双方确认后约定即可生效，届时将开启打卡和提醒
+                </p>
+              </div>
+            )}
 
             <div className="pact-card-stats">
               <div className="stat-item">
@@ -321,6 +378,22 @@ function Pacts() {
                     />
                   ))}
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={formData.requireDualConfirmation}
+                    onChange={e =>
+                      setFormData({ ...formData, requireDualConfirmation: e.target.checked })
+                    }
+                  />
+                  <span>需要双方确认后生效</span>
+                </label>
+                <p className="checkbox-hint muted">
+                  开启后，约定需双方确认才可打卡和接收提醒
+                </p>
               </div>
 
               <div className="modal-actions">
@@ -487,6 +560,67 @@ function Pacts() {
           display: flex;
           justify-content: space-between;
           font-size: 12px;
+        }
+
+        .badge-pending_confirmation {
+          background: rgba(243, 156, 18, 0.2);
+          color: #f39c12;
+        }
+
+        .pact-confirmation-status {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          padding: 12px 16px;
+          background: rgba(243, 156, 18, 0.08);
+          border-radius: 10px;
+          margin-bottom: 16px;
+        }
+
+        .confirmation-item {
+          font-size: 14px;
+        }
+
+        .confirmation-item .confirmed {
+          color: #27ae60;
+        }
+
+        .confirmation-item .unconfirmed {
+          color: #f39c12;
+        }
+
+        .confirmation-hint {
+          width: 100%;
+          font-size: 12px;
+          margin-top: 4px;
+        }
+
+        .confirm-btn {
+          background: rgba(39, 174, 96, 0.15) !important;
+        }
+
+        .confirm-btn:hover {
+          background: rgba(39, 174, 96, 0.3) !important;
+        }
+
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          font-size: 15px;
+        }
+
+        .checkbox-label input[type='checkbox'] {
+          width: 18px;
+          height: 18px;
+          accent-color: var(--primary);
+        }
+
+        .checkbox-hint {
+          font-size: 12px;
+          margin-top: 6px;
+          margin-left: 26px;
         }
 
         .empty-state.full {

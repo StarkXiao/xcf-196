@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { CreatePactDto } from './dto/create-pact.dto';
 import { UpdatePactDto } from './dto/update-pact.dto';
@@ -29,6 +29,10 @@ export class PactsService {
   }
 
   create(createPactDto: CreatePactDto): Pact {
+    const requireDualConfirmation = createPactDto.requireDualConfirmation !== undefined
+      ? createPactDto.requireDualConfirmation
+      : false;
+
     const newPact: Pact = {
       id: uuidv4(),
       title: createPactDto.title,
@@ -36,7 +40,7 @@ export class PactsService {
       category: createPactDto.category,
       startDate: createPactDto.startDate,
       endDate: createPactDto.endDate,
-      status: 'active',
+      status: requireDualConfirmation ? 'pending_confirmation' : 'active',
       currentStreak: 0,
       longestStreak: 0,
       totalCheckins: 0,
@@ -46,9 +50,46 @@ export class PactsService {
       allowMakeup: createPactDto.allowMakeup !== undefined ? createPactDto.allowMakeup : true,
       maxMakeupDays: createPactDto.maxMakeupDays || 7,
       requireMakeupReason: createPactDto.requireMakeupReason !== undefined ? createPactDto.requireMakeupReason : true,
+      requireDualConfirmation,
+      creatorConfirmed: requireDualConfirmation ? false : true,
+      partnerConfirmed: false,
+      confirmedAt: undefined,
     };
     this.pacts.push(newPact);
     return newPact;
+  }
+
+  confirm(id: string, role: 'creator' | 'partner'): Pact {
+    const pact = this.findOne(id);
+
+    if (!pact.requireDualConfirmation) {
+      throw new BadRequestException(`「${pact.title}」无需双人确认`);
+    }
+
+    if (pact.status !== 'pending_confirmation') {
+      throw new BadRequestException(`「${pact.title}」当前状态不允许确认`);
+    }
+
+    if (role === 'creator') {
+      if (pact.creatorConfirmed) {
+        throw new BadRequestException('创建者已确认，无需重复确认');
+      }
+      pact.creatorConfirmed = true;
+    } else {
+      if (pact.partnerConfirmed) {
+        throw new BadRequestException('对方已确认，无需重复确认');
+      }
+      pact.partnerConfirmed = true;
+    }
+
+    if (pact.creatorConfirmed && pact.partnerConfirmed) {
+      pact.status = 'active';
+      pact.confirmedAt = new Date().toISOString();
+    }
+
+    const index = this.pacts.findIndex(p => p.id === id);
+    this.pacts[index] = pact;
+    return this.pacts[index];
   }
 
   update(id: string, updatePactDto: UpdatePactDto): Pact {
@@ -63,11 +104,12 @@ export class PactsService {
     this.pacts = this.pacts.filter(p => p.id !== id);
   }
 
-  getStats(): { total: number; active: number; completed: number; totalCheckins: number } {
+  getStats(): { total: number; active: number; pendingConfirmation: number; completed: number; totalCheckins: number } {
     const total = this.pacts.length;
     const active = this.pacts.filter(p => p.status === 'active').length;
+    const pendingConfirmation = this.pacts.filter(p => p.status === 'pending_confirmation').length;
     const completed = this.pacts.filter(p => p.status === 'completed').length;
     const totalCheckins = this.pacts.reduce((sum, p) => sum + p.totalCheckins, 0);
-    return { total, active, completed, totalCheckins };
+    return { total, active, pendingConfirmation, completed, totalCheckins };
   }
 }

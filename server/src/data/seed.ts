@@ -21,7 +21,7 @@ export interface Pact {
   category: 'daily' | 'weekly' | 'monthly' | 'special';
   startDate: string;
   endDate?: string;
-  status: 'active' | 'completed' | 'paused';
+  status: 'pending_confirmation' | 'active' | 'completed' | 'paused';
   currentStreak: number;
   longestStreak: number;
   totalCheckins: number;
@@ -31,6 +31,10 @@ export interface Pact {
   allowMakeup: boolean;
   maxMakeupDays: number;
   requireMakeupReason: boolean;
+  requireDualConfirmation: boolean;
+  creatorConfirmed: boolean;
+  partnerConfirmed: boolean;
+  confirmedAt?: string;
 }
 
 export interface Checkin {
@@ -103,6 +107,10 @@ export const mockPacts: Pact[] = [
     allowMakeup: true,
     maxMakeupDays: 7,
     requireMakeupReason: true,
+    requireDualConfirmation: false,
+    creatorConfirmed: true,
+    partnerConfirmed: true,
+    confirmedAt: undefined,
   },
   {
     id: 'pact-2',
@@ -120,6 +128,10 @@ export const mockPacts: Pact[] = [
     allowMakeup: true,
     maxMakeupDays: 14,
     requireMakeupReason: true,
+    requireDualConfirmation: true,
+    creatorConfirmed: true,
+    partnerConfirmed: true,
+    confirmedAt: '2024-02-01T10:00:00Z',
   },
   {
     id: 'pact-3',
@@ -137,6 +149,10 @@ export const mockPacts: Pact[] = [
     allowMakeup: true,
     maxMakeupDays: 30,
     requireMakeupReason: true,
+    requireDualConfirmation: true,
+    creatorConfirmed: true,
+    partnerConfirmed: true,
+    confirmedAt: '2024-01-15T09:00:00Z',
   },
   {
     id: 'pact-4',
@@ -154,6 +170,10 @@ export const mockPacts: Pact[] = [
     allowMakeup: true,
     maxMakeupDays: 30,
     requireMakeupReason: false,
+    requireDualConfirmation: false,
+    creatorConfirmed: true,
+    partnerConfirmed: true,
+    confirmedAt: undefined,
   },
   {
     id: 'pact-5',
@@ -171,6 +191,31 @@ export const mockPacts: Pact[] = [
     allowMakeup: false,
     maxMakeupDays: 0,
     requireMakeupReason: false,
+    requireDualConfirmation: false,
+    creatorConfirmed: true,
+    partnerConfirmed: true,
+    confirmedAt: undefined,
+  },
+  {
+    id: 'pact-6',
+    title: '每天互道早安',
+    description: '每天早上醒来第一条消息发给对方，开启美好的一天',
+    category: 'daily',
+    startDate: '2024-06-15',
+    status: 'pending_confirmation',
+    currentStreak: 0,
+    longestStreak: 0,
+    totalCheckins: 0,
+    totalMakeupCheckins: 0,
+    color: '#e91e63',
+    icon: '🌅',
+    allowMakeup: true,
+    maxMakeupDays: 3,
+    requireMakeupReason: true,
+    requireDualConfirmation: true,
+    creatorConfirmed: true,
+    partnerConfirmed: false,
+    confirmedAt: undefined,
   },
 ];
 

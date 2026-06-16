@@ -5,7 +5,7 @@ export interface Pact {
   category: 'daily' | 'weekly' | 'monthly' | 'special';
   startDate: string;
   endDate?: string;
-  status: 'active' | 'completed' | 'paused';
+  status: 'pending_confirmation' | 'active' | 'completed' | 'paused';
   currentStreak: number;
   longestStreak: number;
   totalCheckins: number;
@@ -15,4 +15,8 @@ export interface Pact {
   allowMakeup: boolean;
   maxMakeupDays: number;
   requireMakeupReason: boolean;
+  requireDualConfirmation: boolean;
+  creatorConfirmed: boolean;
+  partnerConfirmed: boolean;
+  confirmedAt?: string;
 }

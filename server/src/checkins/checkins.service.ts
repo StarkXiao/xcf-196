@@ -43,6 +43,11 @@ export class CheckinsService {
 
   create(createCheckinDto: CreateCheckinDto): Checkin {
     const pact = this.pactsService.findOne(createCheckinDto.pactId);
+
+    if (pact.status === 'pending_confirmation') {
+      throw new BadRequestException(`「${pact.title}」尚未双方确认，暂时无法打卡`);
+    }
+
     const today = new Date().toISOString().split('T')[0];
     const checkinDate = createCheckinDto.date || today;
 
@@ -82,6 +87,10 @@ export class CheckinsService {
 
   makeupCheckin(dto: MakeupCheckinDto): Checkin {
     const pact = this.pactsService.findOne(dto.pactId);
+
+    if (pact.status === 'pending_confirmation') {
+      throw new BadRequestException(`「${pact.title}」尚未双方确认，暂时无法打卡`);
+    }
 
     if (!pact.allowMakeup) {
       throw new BadRequestException(`「${pact.title}」不允许补签`);
