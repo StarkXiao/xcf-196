@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsDateString, IsNotEmpty, IsArray } from 'class-validator';
 
 export class MakeupCheckinDto {
   @IsString()
@@ -23,6 +23,15 @@ export class MakeupCheckinDto {
   @IsString()
   @IsOptional()
   photoUrl?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  photos?: string[];
+
+  @IsString()
+  @IsOptional()
+  location?: string;
 
   @IsString()
   @IsOptional()

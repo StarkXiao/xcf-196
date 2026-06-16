@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsDateString, IsBoolean, IsArray, ValidateNested, IsObject } from 'class-validator';
 
 export class CreateCheckinDto {
   @IsString()
@@ -24,6 +24,15 @@ export class CreateCheckinDto {
   @IsOptional()
   photoUrl?: string;
 
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  photos?: string[];
+
+  @IsString()
+  @IsOptional()
+  location?: string;
+
   @IsBoolean()
   @IsOptional()
   isMakeup?: boolean;
@@ -36,6 +45,7 @@ export class CreateCheckinDto {
   @IsOptional()
   subtaskIds?: string[];
 
+  @IsObject()
   @IsOptional()
   subtaskProgress?: Record<string, number>;
 }

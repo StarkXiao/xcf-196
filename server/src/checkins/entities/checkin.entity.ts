@@ -6,6 +6,8 @@ export interface Checkin {
   mood: 'happy' | 'normal' | 'tired' | 'excited' | 'grateful';
   checkedBy: 'user' | 'partner' | 'both';
   photoUrl?: string;
+  photos?: string[];
+  location?: string;
   isMakeup: boolean;
   makeupReason?: string;
   makeupAt?: string;

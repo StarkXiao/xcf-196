@@ -47,6 +47,8 @@ export interface Checkin {
   mood: 'happy' | 'normal' | 'tired' | 'excited' | 'grateful';
   checkedBy: 'user' | 'partner' | 'both';
   photoUrl?: string;
+  photos?: string[];
+  location?: string;
   isMakeup: boolean;
   makeupReason?: string;
   makeupAt?: string;
@@ -230,6 +232,10 @@ export const mockCheckins: Checkin[] = [
     note: '今天工作好累，但听到你的声音就安心了',
     mood: 'tired',
     checkedBy: 'both',
+    photos: [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cozy%20bedroom%20night%20soft%20lamp%20light%20romantic%20warm&image_size=landscape_16_9',
+    ],
+    location: '家里',
     isMakeup: false,
     createdAt: '2024-06-10T22:30:00Z',
   },
@@ -250,6 +256,10 @@ export const mockCheckins: Checkin[] = [
     note: '今天很想你',
     mood: 'grateful',
     checkedBy: 'user',
+    photos: [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=sunset%20sky%20romantic%20clouds%20warm%20colors&image_size=landscape_16_9',
+    ],
+    location: '公司楼下',
     isMakeup: false,
     createdAt: '2024-06-12T23:00:00Z',
   },
@@ -260,6 +270,11 @@ export const mockCheckins: Checkin[] = [
     note: '做了红烧肉，超级好吃！',
     mood: 'excited',
     checkedBy: 'both',
+    photos: [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=delicious%20braised%20pork%20dish%20on%20table%20home%20cooking&image_size=landscape_16_9',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=two%20people%20cooking%20together%20in%20kitchen%20happy&image_size=landscape_16_9',
+    ],
+    location: '家里的厨房',
     isMakeup: false,
     createdAt: '2024-06-08T19:30:00Z',
   },
@@ -270,6 +285,10 @@ export const mockCheckins: Checkin[] = [
     note: '一起做了意大利面，虽然有点糊但是很开心',
     mood: 'happy',
     checkedBy: 'both',
+    photos: [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=pasta%20dish%20italian%20food%20home%20made%20cozy&image_size=landscape_16_9',
+    ],
+    location: '家里的厨房',
     isMakeup: false,
     createdAt: '2024-06-01T20:00:00Z',
   },
@@ -280,6 +299,12 @@ export const mockCheckins: Checkin[] = [
     note: '520快乐！去了我们第一次约会的餐厅',
     mood: 'excited',
     checkedBy: 'both',
+    photos: [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=romantic%20restaurant%20candlelight%20dinner%20couple&image_size=landscape_16_9',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=roses%20on%20restaurant%20table%20romantic%20anniversary&image_size=landscape_16_9',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=two%20wine%20glasses%20toast%20romantic%20evening&image_size=landscape_16_9',
+    ],
+    location: 'Le Jardin 法餐厅',
     isMakeup: false,
     createdAt: '2024-05-20T21:00:00Z',
   },
@@ -290,6 +315,10 @@ export const mockCheckins: Checkin[] = [
     note: '《小王子》第3章，狐狸的那段真的很治愈',
     mood: 'grateful',
     checkedBy: 'user',
+    photos: [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=open%20book%20on%20desk%20warm%20reading%20lamp%20cozy&image_size=landscape_16_9',
+    ],
+    location: '星巴克',
     isMakeup: false,
     createdAt: '2024-06-10T21:00:00Z',
   },

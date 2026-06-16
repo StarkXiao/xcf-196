@@ -46,6 +46,8 @@ export const checkinsApi = {
     mood?: Checkin['mood'];
     checkedBy?: Checkin['checkedBy'];
     photoUrl?: string;
+    photos?: string[];
+    location?: string;
     makeupReason?: string;
   }) => api.post<Checkin>('/checkins/makeup', data).then(res => res.data),
   getMissed: () =>

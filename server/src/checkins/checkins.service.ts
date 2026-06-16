@@ -79,6 +79,8 @@ export class CheckinsService {
       checkedBy: createCheckinDto.checkedBy || 'user',
       pactId: createCheckinDto.pactId,
       photoUrl: createCheckinDto.photoUrl,
+      photos: createCheckinDto.photos,
+      location: createCheckinDto.location,
       isMakeup: false,
       createdAt: new Date().toISOString(),
       subtaskIds: createCheckinDto.subtaskIds,
@@ -136,6 +138,8 @@ export class CheckinsService {
       checkedBy: dto.checkedBy || 'user',
       pactId: dto.pactId,
       photoUrl: dto.photoUrl,
+      photos: dto.photos,
+      location: dto.location,
       isMakeup: true,
       makeupReason: dto.makeupReason,
       makeupAt: now,
@@ -377,6 +381,11 @@ export class CheckinsService {
             checkinId: checkin.id,
             originalDate: checkin.date,
             makeupReason: checkin.makeupReason,
+            mood: checkin.mood,
+            checkedBy: checkin.checkedBy,
+            photos: checkin.photos,
+            location: checkin.location,
+            note: checkin.note,
           },
         });
       } else {
@@ -391,6 +400,9 @@ export class CheckinsService {
             checkinId: checkin.id,
             mood: checkin.mood,
             checkedBy: checkin.checkedBy,
+            photos: checkin.photos,
+            location: checkin.location,
+            note: checkin.note,
           },
         });
       }

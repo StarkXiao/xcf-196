@@ -31,6 +31,8 @@ type MakeupFormData = {
   mood: 'happy' | 'normal' | 'tired' | 'excited' | 'grateful';
   checkedBy: 'user' | 'partner' | 'both';
   makeupReason: string;
+  photos: string[];
+  location: string;
 };
 
 function Checkins() {
@@ -50,7 +52,10 @@ function Checkins() {
     checkedBy: 'both' as const,
     subtaskIds: [] as string[],
     subtaskProgress: {} as Record<string, number>,
+    photos: [] as string[],
+    location: '',
   });
+  const [photoInput, setPhotoInput] = useState('');
   const [makeupFormData, setMakeupFormData] = useState<MakeupFormData | null>(null);
   const [error, setError] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string>('');
@@ -123,7 +128,10 @@ function Checkins() {
       checkedBy: 'both',
       subtaskIds: [],
       subtaskProgress: {},
+      photos: [],
+      location: '',
     });
+    setPhotoInput('');
     if (pacts[0]?.id) {
       loadSubtasksForPact(pacts[0].id);
     }
@@ -137,6 +145,8 @@ function Checkins() {
       mood: 'happy',
       checkedBy: 'both',
       makeupReason: '',
+      photos: [],
+      location: '',
     });
     setShowMakeupModal(true);
     setError('');
@@ -155,6 +165,8 @@ function Checkins() {
         mood: makeupFormData.mood,
         checkedBy: makeupFormData.checkedBy,
         makeupReason: makeupFormData.makeupReason,
+        photos: makeupFormData.photos,
+        location: makeupFormData.location,
       });
       setShowMakeupModal(false);
       setMakeupFormData(null);
@@ -365,8 +377,27 @@ function Checkins() {
                       </div>
                       <div className="checkin-mood">{getMoodEmoji(checkin.mood)}</div>
                     </div>
-                    {checkin.note && (
-                      <div className="checkin-note">{checkin.note}</div>
+                    {checkin.photos && checkin.photos.length > 0 && (
+                      <div className="checkin-photos">
+                        {checkin.photos.map((url, idx) => (
+                          <div key={idx} className="checkin-photo-wrapper">
+                            <img src={url} alt={`打卡照片 ${idx + 1}`} className="checkin-photo" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {(checkin.location || checkin.note) && (
+                      <div className="checkin-body">
+                        {checkin.location && (
+                          <div className="checkin-location">
+                            <span className="location-icon">📍</span>
+                            {checkin.location}
+                          </div>
+                        )}
+                        {checkin.note && (
+                          <div className="checkin-note">{checkin.note}</div>
+                        )}
+                      </div>
                     )}
                     {checkin.isMakeup && checkin.makeupReason && (
                       <div className="makeup-reason">
@@ -587,6 +618,61 @@ function Checkins() {
               )}
 
               <div className="form-group">
+                <label>记录地点（选填）</label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={e => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="📍 在哪里打卡的..."
+                />
+              </div>
+
+              <div className="form-group">
+                <label>添加照片（选填）</label>
+                <div className="photo-input-row">
+                  <input
+                    type="text"
+                    value={photoInput}
+                    onChange={e => setPhotoInput(e.target.value)}
+                    placeholder="输入照片URL后点击添加"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary photo-add-btn"
+                    onClick={() => {
+                      if (photoInput.trim()) {
+                        setFormData({ ...formData, photos: [...formData.photos, photoInput.trim()] });
+                        setPhotoInput('');
+                      }
+                    }}
+                  >
+                    添加
+                  </button>
+                </div>
+                {formData.photos.length > 0 && (
+                  <div className="photo-preview-list">
+                    {formData.photos.map((url, idx) => (
+                      <div key={idx} className="photo-preview-item">
+                        <img src={url} alt={`照片 ${idx + 1}`} className="photo-preview-img" />
+                        <button
+                          type="button"
+                          className="photo-remove-btn"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              photos: formData.photos.filter((_, i) => i !== idx),
+                            });
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
                 <label>打卡心得（选填）</label>
                 <textarea
                   value={formData.note}
@@ -727,6 +813,64 @@ function Checkins() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label>记录地点（选填）</label>
+                <input
+                  type="text"
+                  value={makeupFormData.location}
+                  onChange={e => setMakeupFormData({ ...makeupFormData, location: e.target.value })}
+                  placeholder="📍 当时在哪里..."
+                />
+              </div>
+
+              <div className="form-group">
+                <label>添加照片（选填）</label>
+                <div className="photo-input-row">
+                  <input
+                    type="text"
+                    value={photoInput}
+                    onChange={e => setPhotoInput(e.target.value)}
+                    placeholder="输入照片URL后点击添加"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary photo-add-btn"
+                    onClick={() => {
+                      if (photoInput.trim()) {
+                        setMakeupFormData({
+                          ...makeupFormData,
+                          photos: [...makeupFormData.photos, photoInput.trim()],
+                        });
+                        setPhotoInput('');
+                      }
+                    }}
+                  >
+                    添加
+                  </button>
+                </div>
+                {makeupFormData.photos.length > 0 && (
+                  <div className="photo-preview-list">
+                    {makeupFormData.photos.map((url, idx) => (
+                      <div key={idx} className="photo-preview-item">
+                        <img src={url} alt={`照片 ${idx + 1}`} className="photo-preview-img" />
+                        <button
+                          type="button"
+                          className="photo-remove-btn"
+                          onClick={() => {
+                            setMakeupFormData({
+                              ...makeupFormData,
+                              photos: makeupFormData.photos.filter((_, i) => i !== idx),
+                            });
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -1093,8 +1237,103 @@ function Checkins() {
         .checkin-note {
           font-size: 14px;
           line-height: 1.6;
-          padding-top: 12px;
+          padding-top: 8px;
+        }
+
+        .checkin-photos {
+          display: flex;
+          gap: 8px;
+          margin: 12px 0;
+          overflow-x: auto;
+          padding-bottom: 4px;
+        }
+
+        .checkin-photo-wrapper {
+          flex-shrink: 0;
+          width: 160px;
+          height: 120px;
+          border-radius: 10px;
+          overflow: hidden;
+        }
+
+        .checkin-photo {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.2s;
+        }
+
+        .checkin-photo:hover {
+          transform: scale(1.05);
+        }
+
+        .checkin-body {
+          padding-top: 10px;
           border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .checkin-location {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 13px;
+          color: var(--text-muted);
+          margin-bottom: 6px;
+        }
+
+        .location-icon {
+          font-size: 14px;
+        }
+
+        .photo-input-row {
+          display: flex;
+          gap: 8px;
+        }
+
+        .photo-input-row input {
+          flex: 1;
+        }
+
+        .photo-add-btn {
+          flex-shrink: 0;
+          padding: 8px 14px;
+          white-space: nowrap;
+        }
+
+        .photo-preview-list {
+          display: flex;
+          gap: 10px;
+          margin-top: 10px;
+          flex-wrap: wrap;
+        }
+
+        .photo-preview-item {
+          position: relative;
+          width: 80px;
+          height: 80px;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .photo-preview-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .photo-remove-btn {
+          position: absolute;
+          top: 2px;
+          right: 2px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.6);
+          color: white;
+          font-size: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .makeup-reason {
