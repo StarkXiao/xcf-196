@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { timelineApi, countdownApi } from '../services/api';
-import type { TimelineEvent, CountdownItem } from '../types';
+import { timelineApi, countdownApi, remindersApi } from '../services/api';
+import type { TimelineEvent, CountdownItem, Reminder } from '../types';
 
 const typeLabels: Record<string, string> = {
   pact_created: '新约定',
@@ -15,6 +15,7 @@ function Timeline() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
+  const [anniversaryReminders, setAnniversaryReminders] = useState<Reminder[]>([]);
 
   useEffect(() => {
     loadTimeline();
@@ -22,18 +23,22 @@ function Timeline() {
 
   const loadTimeline = async () => {
     try {
-      const [data, countdownData] = await Promise.all([
+      const [data, countdownData, allReminders] = await Promise.all([
         timelineApi.findAll(
           typeFilter === 'all' ? undefined : typeFilter,
         ),
         countdownApi.findAll(),
+        remindersApi.findAll(true),
       ]);
       setEvents(data);
       setCountdowns(countdownData);
+      setAnniversaryReminders(allReminders.filter(r => r.type === 'anniversary'));
     } catch (error) {
       console.error('加载时间线失败', error);
     }
   };
+
+  const upcomingCountdowns = countdowns.filter(c => c.isNear || c.isToday);
 
   const groupByYear = (events: TimelineEvent[]) => {
     const groups: Record<string, TimelineEvent[]> = {};
@@ -78,24 +83,64 @@ function Timeline() {
         </div>
       </div>
 
-      {countdowns.filter(c => c.isNear || c.isToday).length > 0 && (
-        <div className="upcoming-events-banner">
-          <div className="banner-title">📅 即将到来的重要日子</div>
-          <div className="banner-items">
-            {countdowns.filter(c => c.isNear || c.isToday).map(cd => (
-              <div key={cd.id} className={`banner-item ${cd.isToday ? 'banner-today' : ''}`}>
-                <span className="banner-icon">{cd.icon}</span>
-                <span className="banner-text">{cd.title}</span>
-                <span className="banner-countdown" style={{ color: cd.isToday ? '#e91e63' : cd.color }}>
-                  {cd.isToday ? '🎉 今天！' : `${cd.daysLeft}天`}
-                </span>
-                {cd.atmosphere && cd.atmosphere !== 'none' && (
-                  <span className="banner-atmosphere">
-                    {cd.atmosphere === 'romantic' ? '💕' : '🎊'}
-                  </span>
-                )}
-              </div>
-            ))}
+      {upcomingCountdowns.length > 0 && (
+        <div className="upcoming-timeline-section">
+          <div className="upcoming-section-title">
+            <span>📅 即将到来的纪念事件</span>
+          </div>
+          <div className="upcoming-timeline-list">
+            {upcomingCountdowns.map(cd => {
+              const relatedReminders = anniversaryReminders.filter(
+                r => cd.type === 'anniversary' || cd.pactId === r.pactId,
+              );
+              return (
+                <div
+                  key={cd.id}
+                  className={`upcoming-timeline-card card ${cd.isToday ? 'upcoming-today' : ''}`}
+                >
+                  <div className="upcoming-card-header">
+                    <div className="upcoming-card-icon" style={{ color: cd.isToday ? '#e91e63' : cd.color }}>
+                      {cd.icon}
+                    </div>
+                    <div className="upcoming-card-info">
+                      <h3 className="upcoming-card-title">{cd.title}</h3>
+                      <div className="upcoming-card-meta">
+                        <span className="upcoming-type-badge">
+                          {cd.type === 'anniversary' ? '纪念日' : cd.type === 'special_pact' ? '特别约定' : '自定义'}
+                        </span>
+                        <span className="muted">{cd.targetDate}</span>
+                      </div>
+                    </div>
+                    <div className="upcoming-card-countdown">
+                      {cd.isToday ? (
+                        <span className="countdown-today-label">🎉 今天</span>
+                      ) : (
+                        <span className="countdown-days-label" style={{ color: cd.color }}>
+                          {cd.daysLeft}<small>天</small>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {cd.atmosphere && cd.atmosphere !== 'none' && (
+                    <div className="upcoming-atmosphere-tag">
+                      {cd.atmosphere === 'romantic' ? '💕 浪漫氛围已自动切换' : '🎊 喜庆氛围已自动切换'}
+                    </div>
+                  )}
+                  {relatedReminders.length > 0 && (
+                    <div className="upcoming-reminders">
+                      <div className="upcoming-reminders-title">关联提醒</div>
+                      {relatedReminders.map(r => (
+                        <div key={r.id} className="upcoming-reminder-item">
+                          <span className="upcoming-reminder-time">🔔 {r.time}</span>
+                          <span className="upcoming-reminder-name">{r.title}</span>
+                          <span className="muted">{r.repeat === 'yearly' ? '每年' : r.repeat === 'daily' ? '每天' : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -167,56 +212,138 @@ function Timeline() {
           margin-bottom: 24px;
         }
 
-        .upcoming-events-banner {
+        .upcoming-timeline-section {
           margin-bottom: 32px;
-          padding: 20px 24px;
-          background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(253, 121, 168, 0.1));
-          border-radius: 16px;
-          border: 1px solid rgba(108, 92, 231, 0.2);
         }
 
-        .banner-title {
-          font-size: 16px;
+        .upcoming-section-title {
+          font-size: 18px;
           font-weight: 600;
-          margin-bottom: 14px;
+          margin-bottom: 16px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
-        .banner-items {
+        .upcoming-timeline-list {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 12px;
         }
 
-        .banner-item {
+        .upcoming-timeline-card {
+          position: relative;
+          padding: 20px 24px;
+          border: 1px solid rgba(108, 92, 231, 0.15);
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.06), rgba(253, 121, 168, 0.04));
+        }
+
+        .upcoming-timeline-card.upcoming-today {
+          border-color: rgba(233, 30, 99, 0.4);
+          background: linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(253, 121, 168, 0.06));
+        }
+
+        .upcoming-card-header {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 10px;
+        }
+
+        .upcoming-card-icon {
+          font-size: 28px;
+          flex-shrink: 0;
+        }
+
+        .upcoming-card-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .upcoming-card-title {
+          font-size: 16px;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+
+        .upcoming-card-meta {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 8px 12px;
-          background: rgba(255, 255, 255, 0.05);
+          font-size: 13px;
+        }
+
+        .upcoming-type-badge {
+          padding: 2px 8px;
           border-radius: 10px;
-          font-size: 14px;
-        }
-
-        .banner-item.banner-today {
-          background: rgba(233, 30, 99, 0.1);
-          border: 1px solid rgba(233, 30, 99, 0.2);
-        }
-
-        .banner-icon {
-          font-size: 18px;
-        }
-
-        .banner-text {
-          flex: 1;
+          background: rgba(233, 30, 99, 0.15);
+          color: #e91e63;
+          font-size: 11px;
           font-weight: 500;
         }
 
-        .banner-countdown {
-          font-weight: 600;
+        .upcoming-card-countdown {
+          text-align: right;
+          flex-shrink: 0;
         }
 
-        .banner-atmosphere {
-          font-size: 16px;
+        .countdown-today-label {
+          font-size: 18px;
+          font-weight: 700;
+          color: #e91e63;
+        }
+
+        .countdown-days-label {
+          font-size: 28px;
+          font-weight: 700;
+          line-height: 1;
+        }
+
+        .countdown-days-label small {
+          font-size: 13px;
+          font-weight: 400;
+          margin-left: 2px;
+        }
+
+        .upcoming-atmosphere-tag {
+          font-size: 13px;
+          color: var(--accent);
+          margin-bottom: 10px;
+          padding: 4px 10px;
+          background: rgba(253, 121, 168, 0.1);
+          border-radius: 12px;
+          display: inline-block;
+        }
+
+        .upcoming-reminders {
+          margin-top: 10px;
+          padding: 10px 14px;
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 10px;
+        }
+
+        .upcoming-reminders-title {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-muted);
+          margin-bottom: 8px;
+        }
+
+        .upcoming-reminder-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          padding: 4px 0;
+        }
+
+        .upcoming-reminder-time {
+          color: var(--primary);
+          font-weight: 500;
+        }
+
+        .upcoming-reminder-name {
+          flex: 1;
         }
 
         .timeline-type.type-anniversary {

@@ -51,17 +51,11 @@ function Dashboard() {
     return moods[mood] || '😊';
   };
 
-  const getCountdownLabel = (item: CountdownItem) => {
-    if (item.isToday) return '🎉 就在今天！';
-    if (item.daysLeft === 1) return '明天就到了！';
-    return `还有 ${item.daysLeft} 天`;
-  };
+  const upcomingCountdowns = countdowns.filter(c => c.isNear || c.isToday);
 
-  const getCountdownColor = (item: CountdownItem) => {
-    if (item.isToday) return '#e91e63';
-    if (item.isNear) return '#ff9800';
-    return item.color;
-  };
+  const anniversaryReminders = reminders.filter(
+    r => r.type === 'anniversary' && r.isActive,
+  );
 
   return (
     <div className="dashboard">
@@ -127,60 +121,63 @@ function Dashboard() {
             <span className="section-subtitle muted">重要的日子，值得期待</span>
           </div>
           <div className="countdown-grid">
-            {countdowns.slice(0, 4).map(item => (
-              <div
-                key={item.id}
-                className={`countdown-card card ${item.isToday ? 'countdown-today' : ''} ${item.isNear ? 'countdown-near' : ''}`}
-              >
-                <div className="countdown-card-header">
-                  <div
-                    className="countdown-icon"
-                    style={{ backgroundColor: `${getCountdownColor(item)}20`, color: getCountdownColor(item) }}
-                  >
-                    {item.icon}
-                  </div>
-                  <div className="countdown-info">
-                    <h3 className="countdown-title">{item.title}</h3>
-                    <span className="countdown-type">
-                      {item.type === 'anniversary' ? '纪念日' : item.type === 'special_pact' ? '特别约定' : '自定义'}
-                    </span>
-                  </div>
-                </div>
-                <div className="countdown-timer">
-                  {item.isToday ? (
-                    <div className="countdown-today-text" style={{ color: '#e91e63' }}>
-                      🎉 就是今天！
+            {countdowns.slice(0, 4).map(item => {
+              const color = item.isToday ? '#e91e63' : item.isNear ? '#ff9800' : item.color;
+              return (
+                <div
+                  key={item.id}
+                  className={`countdown-card card ${item.isToday ? 'countdown-today' : ''} ${item.isNear ? 'countdown-near' : ''}`}
+                >
+                  <div className="countdown-card-header">
+                    <div
+                      className="countdown-icon"
+                      style={{ backgroundColor: `${color}20`, color }}
+                    >
+                      {item.icon}
                     </div>
-                  ) : (
-                    <>
-                      <div className="countdown-time-block" style={{ color: getCountdownColor(item) }}>
-                        <span className="countdown-number">{item.daysLeft}</span>
-                        <span className="countdown-unit">天</span>
+                    <div className="countdown-info">
+                      <h3 className="countdown-title">{item.title}</h3>
+                      <span className="countdown-type">
+                        {item.type === 'anniversary' ? '纪念日' : item.type === 'special_pact' ? '特别约定' : '自定义'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="countdown-timer">
+                    {item.isToday ? (
+                      <div className="countdown-today-text" style={{ color: '#e91e63' }}>
+                        🎉 就是今天！
                       </div>
-                      <div className="countdown-time-block">
-                        <span className="countdown-number-sm">{item.hoursLeft}</span>
-                        <span className="countdown-unit">时</span>
-                      </div>
-                      <div className="countdown-time-block">
-                        <span className="countdown-number-sm">{item.minutesLeft}</span>
-                        <span className="countdown-unit">分</span>
-                      </div>
-                    </>
+                    ) : (
+                      <>
+                        <div className="countdown-time-block" style={{ color }}>
+                          <span className="countdown-number">{item.daysLeft}</span>
+                          <span className="countdown-unit">天</span>
+                        </div>
+                        <div className="countdown-time-block">
+                          <span className="countdown-number-sm">{item.hoursLeft}</span>
+                          <span className="countdown-unit">时</span>
+                        </div>
+                        <div className="countdown-time-block">
+                          <span className="countdown-number-sm">{item.minutesLeft}</span>
+                          <span className="countdown-unit">分</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {item.isNear && !item.isToday && (
+                    <div className="countdown-badge" style={{ backgroundColor: `${color}20`, color }}>
+                      即将到来
+                    </div>
                   )}
+                  {item.atmosphere && item.atmosphere !== 'none' && (
+                    <div className="countdown-atmosphere">
+                      {item.atmosphere === 'romantic' ? '💕 浪漫氛围已自动切换' : '🎊 喜庆氛围已自动切换'}
+                    </div>
+                  )}
+                  <div className="countdown-date muted">{item.targetDate}</div>
                 </div>
-                {item.isNear && !item.isToday && (
-                  <div className="countdown-badge" style={{ backgroundColor: `${getCountdownColor(item)}20`, color: getCountdownColor(item) }}>
-                    即将到来
-                  </div>
-                )}
-                {item.atmosphere && item.atmosphere !== 'none' && (
-                  <div className="countdown-atmosphere">
-                    {item.atmosphere === 'romantic' ? '💕 浪漫氛围' : '🎊 喜庆氛围'}
-                  </div>
-                )}
-                <div className="countdown-date muted">{item.targetDate}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -272,7 +269,23 @@ function Dashboard() {
             </Link>
           </div>
           <div className="timeline-preview">
-            {timeline.map((event, index) => (
+            {upcomingCountdowns.length > 0 && upcomingCountdowns.map(cd => (
+              <div key={cd.id} className="timeline-item-small upcoming-event">
+                <div className="timeline-dot" style={{ borderColor: cd.isToday ? '#e91e63' : cd.color, background: `${cd.isToday ? '#e91e63' : cd.color}15` }}>
+                  {cd.icon}
+                </div>
+                <div className="timeline-content">
+                  <div className="timeline-title">
+                    {cd.title}
+                    <span className="upcoming-badge" style={{ color: cd.isToday ? '#e91e63' : cd.color }}>
+                      {cd.isToday ? '🎉 今天' : `⏳ ${cd.daysLeft}天`}
+                    </span>
+                  </div>
+                  <div className="timeline-date muted">{cd.targetDate}</div>
+                </div>
+              </div>
+            ))}
+            {timeline.map((event) => (
               <div key={event.id} className="timeline-item-small">
                 <div className="timeline-dot">{event.icon}</div>
                 <div className="timeline-content">
@@ -286,13 +299,43 @@ function Dashboard() {
 
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">🔔 今日提醒</h3>
+            <h3 className="card-title">🔔 提醒</h3>
             <Link to="/reminders" className="card-link">
               管理提醒 →
             </Link>
           </div>
           <div className="reminder-list">
-            {reminders.slice(0, 3).map(reminder => (
+            {upcomingCountdowns.length > 0 && (
+              <div className="reminder-upcoming-section">
+                {upcomingCountdowns.map(cd => (
+                  <div key={cd.id} className="reminder-item reminder-upcoming">
+                    <div className="reminder-time" style={{ color: cd.isToday ? '#e91e63' : cd.color }}>
+                      {cd.isToday ? '今天' : `${cd.daysLeft}天`}
+                    </div>
+                    <div className="reminder-info">
+                      <div className="reminder-title">
+                        {cd.icon} {cd.title}
+                      </div>
+                      <div className="reminder-desc muted">
+                        {cd.atmosphere && cd.atmosphere !== 'none'
+                          ? (cd.atmosphere === 'romantic' ? '💕 浪漫氛围已激活' : '🎊 喜庆氛围已激活')
+                          : cd.description || cd.targetDate}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {anniversaryReminders.map(reminder => (
+              <div key={`ar-${reminder.id}`} className="reminder-item reminder-anniversary">
+                <div className="reminder-time">💕</div>
+                <div className="reminder-info">
+                  <div className="reminder-title">{reminder.title}</div>
+                  <div className="reminder-desc muted">{reminder.description}</div>
+                </div>
+              </div>
+            ))}
+            {reminders.filter(r => r.type !== 'anniversary').slice(0, 3).map(reminder => (
               <div key={reminder.id} className="reminder-item">
                 <div className="reminder-time">{reminder.time}</div>
                 <div className="reminder-info">
@@ -301,7 +344,7 @@ function Dashboard() {
                 </div>
               </div>
             ))}
-            {reminders.length === 0 && (
+            {reminders.length === 0 && upcomingCountdowns.length === 0 && (
               <div className="empty-state">
                 <div className="empty-icon">🔕</div>
                 <p className="muted">暂无活跃的提醒</p>
@@ -632,6 +675,20 @@ function Dashboard() {
           border-bottom: none;
         }
 
+        .timeline-item-small.upcoming-event {
+          padding: 10px 12px;
+          background: rgba(108, 92, 231, 0.06);
+          border-radius: 10px;
+          margin-bottom: 6px;
+          border-bottom: none;
+        }
+
+        .upcoming-badge {
+          font-size: 12px;
+          font-weight: 600;
+          margin-left: 8px;
+        }
+
         .timeline-dot {
           width: 36px;
           height: 36px;
@@ -652,6 +709,21 @@ function Dashboard() {
 
         .timeline-date {
           font-size: 12px;
+        }
+
+        .reminder-upcoming-section {
+          margin-bottom: 8px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .reminder-item.reminder-upcoming {
+          background: rgba(233, 30, 99, 0.06);
+          border: 1px solid rgba(233, 30, 99, 0.12);
+        }
+
+        .reminder-item.reminder-anniversary {
+          background: rgba(233, 30, 99, 0.04);
         }
 
         .reminder-item {

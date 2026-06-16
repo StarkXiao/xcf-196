@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { usersApi, countdownApi } from '../services/api';
 import type { User, AnniversaryInfo, AtmosphereStatus } from '../types';
 
@@ -16,8 +16,8 @@ function Layout() {
   const [user, setUser] = useState<User | null>(null);
   const [anniversary, setAnniversary] = useState<AnniversaryInfo | null>(null);
   const [atmosphere, setAtmosphere] = useState<AtmosphereStatus | null>(null);
-  const [atmosphereDismissed, setAtmosphereDismissed] = useState(false);
   const location = useLocation();
+  const atmosphereApplied = useRef(false);
 
   useEffect(() => {
     loadUserData();
@@ -44,28 +44,41 @@ function Layout() {
     }
   };
 
-  const handleApplyAtmosphere = useCallback(async () => {
-    if (!atmosphere || atmosphere.type === 'none' || atmosphereDismissed) return;
+  useEffect(() => {
+    if (!atmosphere || atmosphereApplied.current) return;
+    if (atmosphere.active && atmosphere.autoSwitch && atmosphere.type !== 'none') {
+      atmosphereApplied.current = true;
+      applyAtmosphere(atmosphere.type);
+    }
+  }, [atmosphere]);
+
+  const applyAtmosphere = async (type: 'romantic' | 'festive' | 'none') => {
     try {
-      const updated = await usersApi.applyAtmosphere(atmosphere.type);
+      const updated = await usersApi.applyAtmosphere(type);
       setUser(updated);
     } catch (error) {
       console.error('应用氛围失败', error);
     }
-  }, [atmosphere, atmosphereDismissed]);
-
-  const handleDismissAtmosphere = useCallback(() => {
-    setAtmosphereDismissed(true);
-  }, []);
+  };
 
   const handleRestoreTheme = useCallback(async () => {
     try {
       const updated = await usersApi.applyAtmosphere('none');
       setUser(updated);
+      atmosphereApplied.current = false;
+      setAtmosphere({
+        active: false,
+        type: 'none',
+        source: '',
+        daysLeft: -1,
+        autoSwitch: false,
+      });
     } catch (error) {
       console.error('恢复主题失败', error);
     }
   }, []);
+
+  const isAtmosphereActive = user?.theme === 'romantic' || user?.theme === 'festive';
 
   return (
     <div className="app-layout">
@@ -82,7 +95,7 @@ function Layout() {
             }}
           />
         ))}
-        {atmosphere?.active && atmosphere.type === 'romantic' && (
+        {user?.theme === 'romantic' && (
           Array.from({ length: 12 }).map((_, i) => (
             <div
               key={`heart-${i}`}
@@ -98,7 +111,7 @@ function Layout() {
             </div>
           ))
         )}
-        {atmosphere?.active && atmosphere.type === 'festive' && (
+        {user?.theme === 'festive' && (
           Array.from({ length: 15 }).map((_, i) => (
             <div
               key={`sparkle-${i}`}
@@ -115,29 +128,6 @@ function Layout() {
           ))
         )}
       </div>
-
-      {atmosphere?.active && !atmosphereDismissed && (
-        <div className={`atmosphere-banner ${atmosphere.type}`}>
-          <div className="atmosphere-banner-content">
-            <span className="atmosphere-banner-icon">
-              {atmosphere.type === 'romantic' ? '💕' : '🎊'}
-            </span>
-            <span className="atmosphere-banner-text">
-              {atmosphere.type === 'romantic'
-                ? `浪漫氛围：${atmosphere.source}${atmosphere.daysLeft === 0 ? '就是今天！' : `还有${atmosphere.daysLeft}天`}`
-                : `喜庆氛围：${atmosphere.source}${atmosphere.daysLeft === 0 ? '就是今天！' : `还有${atmosphere.daysLeft}天`}`}
-            </span>
-            <div className="atmosphere-banner-actions">
-              <button className="atmosphere-btn apply" onClick={handleApplyAtmosphere}>
-                切换氛围
-              </button>
-              <button className="atmosphere-btn dismiss" onClick={handleDismissAtmosphere}>
-                暂不切换
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <aside className="sidebar">
         <div className="sidebar-header">
@@ -166,6 +156,22 @@ function Layout() {
             {anniversary.nextAnniversary > 0 && anniversary.nextAnniversary <= 30 && (
               <div className="next-anniversary">
                 距离纪念日还有 <strong>{anniversary.nextAnniversary}</strong> 天
+              </div>
+            )}
+            {isAtmosphereActive && (
+              <div className="atmosphere-status">
+                <div className="atmosphere-status-info">
+                  <span className="atmosphere-status-icon">
+                    {user.theme === 'romantic' ? '💕' : '🎊'}
+                  </span>
+                  <span className="atmosphere-status-text">
+                    {user.theme === 'romantic' ? '浪漫氛围' : '喜庆氛围'}
+                    {atmosphere?.source && ` · ${atmosphere.source}`}
+                  </span>
+                </div>
+                <button className="atmosphere-restore-btn" onClick={handleRestoreTheme}>
+                  恢复原主题
+                </button>
               </div>
             )}
           </div>
@@ -299,73 +305,46 @@ function Layout() {
           color: var(--accent);
         }
 
-        .atmosphere-banner {
-          position: fixed;
-          top: 0;
-          left: 280px;
-          right: 0;
-          z-index: 100;
-          padding: 12px 24px;
-          backdrop-filter: blur(10px);
+        .atmosphere-status {
+          margin-top: 12px;
+          padding: 10px 12px;
+          border-radius: 10px;
+          background: rgba(233, 30, 99, 0.1);
+          border: 1px solid rgba(233, 30, 99, 0.2);
         }
 
-        .atmosphere-banner.romantic {
-          background: linear-gradient(135deg, rgba(233, 30, 99, 0.2), rgba(244, 143, 177, 0.15));
-          border-bottom: 1px solid rgba(233, 30, 99, 0.3);
-        }
-
-        .atmosphere-banner.festive {
-          background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 204, 2, 0.15));
-          border-bottom: 1px solid rgba(255, 152, 0, 0.3);
-        }
-
-        .atmosphere-banner-content {
+        .atmosphere-status-info {
           display: flex;
           align-items: center;
-          gap: 12px;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        .atmosphere-banner-icon {
-          font-size: 24px;
-        }
-
-        .atmosphere-banner-text {
-          flex: 1;
-          font-size: 14px;
-          font-weight: 500;
-        }
-
-        .atmosphere-banner-actions {
-          display: flex;
-          gap: 8px;
-        }
-
-        .atmosphere-btn {
-          padding: 6px 16px;
-          border-radius: 8px;
+          gap: 6px;
+          margin-bottom: 8px;
           font-size: 13px;
           font-weight: 500;
+        }
+
+        .atmosphere-status-icon {
+          font-size: 16px;
+        }
+
+        .atmosphere-status-text {
+          flex: 1;
+          text-align: left;
+        }
+
+        .atmosphere-restore-btn {
+          width: 100%;
+          padding: 6px 0;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 500;
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--text-muted);
           transition: all 0.2s;
         }
 
-        .atmosphere-btn.apply {
-          background: var(--primary);
-          color: white;
-        }
-
-        .atmosphere-btn.apply:hover {
-          opacity: 0.9;
-        }
-
-        .atmosphere-btn.dismiss {
-          background: rgba(255, 255, 255, 0.1);
-          color: var(--text-color);
-        }
-
-        .atmosphere-btn.dismiss:hover {
+        .atmosphere-restore-btn:hover {
           background: rgba(255, 255, 255, 0.15);
+          color: var(--text-color);
         }
 
         .nav-menu {
