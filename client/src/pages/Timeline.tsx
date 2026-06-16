@@ -6,6 +6,7 @@ const typeLabels: Record<string, string> = {
   pact_created: '新约定',
   pact_completed: '完成约定',
   checkin: '打卡',
+  makeup_checkin: '补签',
   milestone: '里程碑',
   anniversary: '纪念日',
 };
@@ -59,6 +60,7 @@ function Timeline() {
             { value: 'milestone', label: '里程碑' },
             { value: 'anniversary', label: '纪念日' },
             { value: 'checkin', label: '打卡' },
+            { value: 'makeup_checkin', label: '补签' },
           ].map(tab => (
             <button
               key={tab.value}
@@ -89,7 +91,7 @@ function Timeline() {
                   <div className="timeline-content card">
                     <div className="timeline-header">
                       <h3 className="timeline-title">{event.title}</h3>
-                      <span className="timeline-type">{typeLabels[event.type]}</span>
+                      <span className={`timeline-type ${event.type === 'makeup_checkin' ? 'type-makeup' : ''}`}>{typeLabels[event.type]}</span>
                     </div>
                     <p className="timeline-desc muted">{event.description}</p>
                     <div className="timeline-date">
@@ -250,6 +252,11 @@ function Timeline() {
           border-radius: 12px;
           background: rgba(108, 92, 231, 0.2);
           color: var(--secondary);
+        }
+
+        .timeline-type.type-makeup {
+          background: rgba(255, 159, 67, 0.2);
+          color: #ff9f43;
         }
 
         .timeline-desc {
