@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { timelineApi, countdownApi, remindersApi } from '../services/api';
-import type { TimelineEvent, CountdownItem, Reminder } from '../types';
+import { timelineApi, countdownApi, remindersApi, growthApi } from '../services/api';
+import type { TimelineEvent, CountdownItem, Reminder, GrowthStats, GrowthRecord } from '../types';
 
 const typeLabels: Record<string, string> = {
   pact_created: '新约定',
@@ -9,6 +9,7 @@ const typeLabels: Record<string, string> = {
   makeup_checkin: '补签',
   milestone: '里程碑',
   anniversary: '纪念日',
+  growth: '成长值',
 };
 
 const moodMap: Record<string, { emoji: string; label: string; color: string }> = {
@@ -25,6 +26,24 @@ const checkedByLabels: Record<string, string> = {
   both: '一起打卡',
 };
 
+const growthSourceLabels: Record<string, string> = {
+  checkin: '打卡',
+  makeup_checkin: '补签',
+  streak: '连续打卡',
+  pact_completed: '约定',
+  anniversary: '纪念日',
+  milestone: '里程碑',
+};
+
+const growthSourceIcons: Record<string, string> = {
+  checkin: '✅',
+  makeup_checkin: '📝',
+  streak: '🔥',
+  pact_completed: '🎉',
+  anniversary: '💕',
+  milestone: '🏆',
+};
+
 function Timeline() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -32,6 +51,9 @@ function Timeline() {
   const [anniversaryReminders, setAnniversaryReminders] = useState<Reminder[]>([]);
   const [detailEvent, setDetailEvent] = useState<TimelineEvent | null>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [growthStats, setGrowthStats] = useState<GrowthStats | null>(null);
+  const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
+  const [showGrowthView, setShowGrowthView] = useState(false);
 
   useEffect(() => {
     loadTimeline();
@@ -39,16 +61,20 @@ function Timeline() {
 
   const loadTimeline = async () => {
     try {
-      const [data, countdownData, allReminders] = await Promise.all([
+      const [data, countdownData, allReminders, growthStatsData, growthRecordsData] = await Promise.all([
         timelineApi.findAll(
-          typeFilter === 'all' ? undefined : typeFilter,
+          typeFilter === 'all' || typeFilter === 'growth' ? undefined : typeFilter,
         ),
         countdownApi.findAll(),
         remindersApi.findAll(true),
+        growthApi.getStats(),
+        growthApi.getRecords(),
       ]);
       setEvents(data);
       setCountdowns(countdownData);
       setAnniversaryReminders(allReminders.filter(r => r.type === 'anniversary'));
+      setGrowthStats(growthStatsData);
+      setGrowthRecords(growthRecordsData);
     } catch (error) {
       console.error('加载时间线失败', error);
     }
@@ -138,25 +164,82 @@ function Timeline() {
         <p className="page-subtitle muted">记录我们走过的每一步</p>
       </div>
 
+      {growthStats && (
+        <div className="timeline-growth-summary card">
+          <div className="growth-summary-left">
+            <div className="growth-level-display" style={{ backgroundColor: `${growthStats.currentLevel.color}25` }}>
+              <span className="growth-level-emoji" style={{ color: growthStats.currentLevel.color }}>{growthStats.currentLevel.icon}</span>
+            </div>
+            <div className="growth-summary-info">
+              <div className="growth-summary-title">
+                <span className="summary-level-badge" style={{ backgroundColor: growthStats.currentLevel.color }}>
+                  Lv.{growthStats.currentLevel.level}
+                </span>
+                <span className="summary-level-name">{growthStats.currentLevel.name}</span>
+                <span className="summary-total-points">{growthStats.totalPoints} 成长值</span>
+              </div>
+              <div className="growth-summary-progress">
+                <div className="summary-progress-bar">
+                  <div
+                    className="summary-progress-fill"
+                    style={{
+                      width: `${growthStats.levelProgress}%`,
+                      backgroundColor: growthStats.currentLevel.color,
+                    }}
+                  />
+                </div>
+                <span className="summary-progress-text muted">
+                  {growthStats.nextLevel
+                    ? `升级还需 ${growthStats.pointsToNextLevel} 点`
+                    : '已满级'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="growth-summary-stats">
+            <div className="summary-stat-item">
+              <span className="summary-stat-value">{growthStats.thisWeekPoints}</span>
+              <span className="summary-stat-label">本周</span>
+            </div>
+            <div className="summary-stat-divider" />
+            <div className="summary-stat-item">
+              <span className="summary-stat-value">{growthStats.thisMonthPoints}</span>
+              <span className="summary-stat-label">本月</span>
+            </div>
+            <div className="summary-stat-divider" />
+            <div className="summary-stat-item">
+              <span className="summary-stat-value">{growthStats.unlockedBadgesCount}/{growthStats.totalBadgesCount}</span>
+              <span className="summary-stat-label">勋章</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="filter-tabs">
         <div className="tab-group">
           {[
             { value: 'all', label: '全部' },
-            { value: 'pact_created', label: '新约定' },
             { value: 'milestone', label: '里程碑' },
             { value: 'anniversary', label: '纪念日' },
+            { value: 'pact_created', label: '新约定' },
             { value: 'checkin', label: '打卡' },
             { value: 'makeup_checkin', label: '补签' },
           ].map(tab => (
             <button
               key={tab.value}
-              className={`tab tab-small ${typeFilter === tab.value ? 'active' : ''}`}
-              onClick={() => setTypeFilter(tab.value)}
+              className={`tab tab-small ${typeFilter === tab.value && !showGrowthView ? 'active' : ''}`}
+              onClick={() => { setTypeFilter(tab.value); setShowGrowthView(false); }}
             >
               {tab.label}
             </button>
           ))}
         </div>
+        <button
+          className={`tab tab-small growth-tab ${showGrowthView ? 'active' : ''}`}
+          onClick={() => setShowGrowthView(!showGrowthView)}
+        >
+          🌱 成长记录
+        </button>
       </div>
 
       {upcomingCountdowns.length > 0 && (
@@ -221,64 +304,139 @@ function Timeline() {
         </div>
       )}
 
-      <div className="timeline-container">
-        {groupByYear(events).map(([year, yearEvents]) => (
-          <div key={year} className="timeline-year">
-            <div className="year-badge">
-              <span>{year}</span>
-            </div>
-
-            <div className="timeline-list">
-              {yearEvents.map((event, index) => (
-                <div
-                  key={event.id}
-                  className={`timeline-item ${index === yearEvents.length - 1 ? 'last' : ''} ${isCheckinEvent(event) ? 'is-checkin-event' : ''}`}
-                >
-                  <div className="timeline-line" />
-                  <div className="timeline-dot">{event.icon}</div>
-                  <div
-                    className={`timeline-content card ${isCheckinEvent(event) ? 'timeline-memory-card' : ''}`}
-                    onClick={() => isCheckinEvent(event) && openDetail(event)}
-                  >
-                    <div className="timeline-header">
-                      <h3 className="timeline-title">{event.title}</h3>
-                      <span className={`timeline-type ${event.type === 'makeup_checkin' ? 'type-makeup' : ''} ${event.type === 'anniversary' ? 'type-anniversary' : ''}`}>{typeLabels[event.type]}</span>
-                    </div>
-
-                    {isCheckinEvent(event) ? (
-                      renderMemoryCard(event, true)
-                    ) : (
-                      <>
-                        <p className="timeline-desc muted">{event.description}</p>
-                        {event.metadata?.atmosphere && event.metadata.atmosphere !== 'none' && (
-                          <div className="timeline-atmosphere-tag">
-                            {event.metadata.atmosphere === 'romantic' ? '💕 浪漫氛围' : '🎊 喜庆氛围'}
+      {showGrowthView ? (
+        <div className="growth-timeline-container">
+          {(() => {
+            const groups: Record<string, GrowthRecord[]> = {};
+            growthRecords.forEach(record => {
+              const month = record.createdAt.split('T')[0].slice(0, 7);
+              if (!groups[month]) groups[month] = [];
+              groups[month].push(record);
+            });
+            return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0])).map(([month, monthRecords]) => {
+              const monthPoints = monthRecords.reduce((sum, r) => sum + r.points, 0);
+              return (
+                <div key={month} className="growth-timeline-month">
+                  <div className="growth-month-header">
+                    <span className="growth-month-label">{month.replace('-', '年')}月</span>
+                    <span className="growth-month-points">共 +{monthPoints}</span>
+                  </div>
+                  <div className="growth-month-list">
+                    {monthRecords.map((record, idx) => (
+                      <div key={record.id} className={`growth-timeline-item ${idx === monthRecords.length - 1 ? 'last' : ''}`}>
+                        <div className="growth-timeline-line" />
+                        <div className="growth-timeline-dot" style={{ color: record.sourceType === 'streak' ? '#f39c12' : record.sourceType === 'anniversary' ? '#fd79a8' : '#6c5ce7' }}>
+                          {growthSourceIcons[record.sourceType] || '✨'}
+                        </div>
+                        <div className="growth-timeline-content card">
+                          <div className="growth-timeline-header">
+                            <div>
+                              <h4 className="growth-timeline-title">{record.reason}</h4>
+                              <div className="growth-timeline-meta muted">
+                                <span className="growth-type-tag">{growthSourceLabels[record.sourceType]}</span>
+                                <span>·</span>
+                                <span>{new Date(record.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                            <span className="growth-points-badge" style={{ color: '#f39c12' }}>+{record.points}</span>
                           </div>
-                        )}
-                      </>
-                    )}
-
-                    <div className="timeline-date">
-                      <span className="muted">{event.date}</span>
-                      {isCheckinEvent(event) && (
-                        <span className="timeline-view-detail">查看详情 →</span>
-                      )}
-                    </div>
+                          {record.metadata?.streakDays && (
+                            <div className="growth-milestone-info" style={{ background: 'rgba(243, 156, 18, 0.1)', borderLeft: '3px solid #f39c12' }}>
+                              <span>🔥 连续打卡里程碑：{record.metadata.streakDays}天</span>
+                            </div>
+                          )}
+                          {record.metadata?.yearsTogether && (
+                            <div className="growth-milestone-info" style={{ background: 'rgba(253, 121, 168, 0.1)', borderLeft: '3px solid #fd79a8' }}>
+                              <span>💕 在一起{record.metadata.yearsTogether}周年</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        ))}
+              );
+            });
+          })()}
 
-        {events.length === 0 && (
-          <div className="empty-state full card">
-            <div className="empty-icon">🕐</div>
-            <h3>时间线还是空的</h3>
-            <p className="muted">创建约定、打卡记录，让时间线丰富起来吧</p>
-          </div>
-        )}
-      </div>
+          {growthRecords.length === 0 && (
+            <div className="empty-state full card">
+              <div className="empty-icon">🌱</div>
+              <h3>还没有成长值记录</h3>
+              <p className="muted">完成打卡、坚持约定，每一步都在积累成长值哦</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="timeline-container">
+          {groupByYear(events).map(([year, yearEvents]) => (
+            <div key={year} className="timeline-year">
+              <div className="year-badge">
+                <span>{year}</span>
+              </div>
+
+              <div className="timeline-list">
+                {yearEvents.map((event, index) => (
+                  <div
+                    key={event.id}
+                    className={`timeline-item ${index === yearEvents.length - 1 ? 'last' : ''} ${isCheckinEvent(event) ? 'is-checkin-event' : ''}`}
+                  >
+                    <div className="timeline-line" />
+                    <div className="timeline-dot">{event.icon}</div>
+                    <div
+                      className={`timeline-content card ${isCheckinEvent(event) ? 'timeline-memory-card' : ''}`}
+                      onClick={() => isCheckinEvent(event) && openDetail(event)}
+                    >
+                      <div className="timeline-header">
+                        <div className="timeline-title-wrapper">
+                          <h3 className="timeline-title">{event.title}</h3>
+                          {event.metadata?.growthPoints && (
+                            <span className="event-growth-tag">+{event.metadata.growthPoints}</span>
+                          )}
+                          {event.metadata?.isBadgeUnlock && (
+                            <span className="event-badge-tag" style={{ color: event.metadata.color }}>
+                              🎖️ 新勋章
+                            </span>
+                          )}
+                        </div>
+                        <span className={`timeline-type ${event.type === 'makeup_checkin' ? 'type-makeup' : ''} ${event.type === 'anniversary' ? 'type-anniversary' : ''}`}>{typeLabels[event.type]}</span>
+                      </div>
+
+                      {isCheckinEvent(event) ? (
+                        renderMemoryCard(event, true)
+                      ) : (
+                        <>
+                          <p className="timeline-desc muted">{event.description}</p>
+                          {event.metadata?.atmosphere && event.metadata.atmosphere !== 'none' && (
+                            <div className="timeline-atmosphere-tag">
+                              {event.metadata.atmosphere === 'romantic' ? '💕 浪漫氛围' : '🎊 喜庆氛围'}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      <div className="timeline-date">
+                        <span className="muted">{event.date}</span>
+                        {isCheckinEvent(event) && (
+                          <span className="timeline-view-detail">查看详情 →</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {events.length === 0 && (
+            <div className="empty-state full card">
+              <div className="empty-icon">🕐</div>
+              <h3>时间线还是空的</h3>
+              <p className="muted">创建约定、打卡记录，让时间线丰富起来吧</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {detailEvent && (
         <div className="modal-overlay" onClick={closeDetail}>
@@ -956,7 +1114,323 @@ function Timeline() {
           margin-bottom: 16px;
         }
 
+        .timeline-growth-summary {
+          margin-bottom: 24px;
+          padding: 20px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.08), rgba(253, 121, 168, 0.05));
+          border: 1px solid rgba(108, 92, 231, 0.18);
+          flex-wrap: wrap;
+        }
+
+        .growth-summary-left {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex: 1;
+          min-width: 280px;
+        }
+
+        .growth-level-display {
+          width: 60px;
+          height: 60px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .growth-level-emoji {
+          font-size: 30px;
+        }
+
+        .growth-summary-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .growth-summary-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
+          flex-wrap: wrap;
+        }
+
+        .summary-level-badge {
+          padding: 2px 8px;
+          border-radius: 8px;
+          font-size: 11px;
+          font-weight: 700;
+          color: white;
+        }
+
+        .summary-level-name {
+          font-size: 18px;
+          font-weight: 600;
+        }
+
+        .summary-total-points {
+          font-size: 13px;
+          color: var(--text-muted);
+          padding: 2px 8px;
+          background: rgba(243, 156, 18, 0.12);
+          color: #f39c12;
+          border-radius: 8px;
+          font-weight: 500;
+        }
+
+        .growth-summary-progress {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .summary-progress-bar {
+          flex: 1;
+          height: 8px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 4px;
+          overflow: hidden;
+          min-width: 100px;
+        }
+
+        .summary-progress-fill {
+          height: 100%;
+          border-radius: 4px;
+          transition: width 0.5s;
+        }
+
+        .summary-progress-text {
+          font-size: 11px;
+          white-space: nowrap;
+        }
+
+        .growth-summary-stats {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .summary-stat-item {
+          text-align: center;
+          min-width: 60px;
+        }
+
+        .summary-stat-value {
+          font-size: 20px;
+          font-weight: 700;
+          display: block;
+          background: linear-gradient(135deg, var(--primary), var(--accent));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .summary-stat-label {
+          font-size: 11px;
+          color: var(--text-muted);
+        }
+
+        .summary-stat-divider {
+          width: 1px;
+          height: 36px;
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-tabs {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 24px;
+        }
+
+        .growth-tab {
+          background: rgba(243, 156, 18, 0.1) !important;
+          color: #f39c12 !important;
+        }
+
+        .growth-tab.active {
+          background: linear-gradient(135deg, #f39c12, #e67e22) !important;
+          color: white !important;
+        }
+
+        .timeline-title-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .event-growth-tag {
+          font-size: 12px;
+          font-weight: 600;
+          color: #f39c12;
+          padding: 1px 8px;
+          background: rgba(243, 156, 18, 0.12);
+          border-radius: 10px;
+        }
+
+        .event-badge-tag {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 2px 8px;
+          background: rgba(253, 121, 168, 0.12);
+          border-radius: 10px;
+        }
+
+        .growth-timeline-container {
+          position: relative;
+        }
+
+        .growth-timeline-month {
+          margin-bottom: 32px;
+        }
+
+        .growth-month-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+          padding: 0 8px;
+        }
+
+        .growth-month-label {
+          font-size: 16px;
+          font-weight: 700;
+          background: linear-gradient(135deg, var(--primary), var(--accent));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .growth-month-points {
+          font-size: 13px;
+          font-weight: 600;
+          color: #f39c12;
+          padding: 3px 10px;
+          background: rgba(243, 156, 18, 0.12);
+          border-radius: 10px;
+        }
+
+        .growth-month-list {
+          position: relative;
+          padding-left: 56px;
+        }
+
+        .growth-timeline-item {
+          position: relative;
+          margin-bottom: 16px;
+        }
+
+        .growth-timeline-item.last .growth-timeline-line {
+          display: none;
+        }
+
+        .growth-timeline-line {
+          position: absolute;
+          left: -36px;
+          top: 22px;
+          bottom: -16px;
+          width: 2px;
+          background: linear-gradient(to bottom, #6c5ce7, transparent);
+        }
+
+        .growth-timeline-dot {
+          position: absolute;
+          left: -48px;
+          top: 6px;
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          background: var(--card-bg);
+          border: 2px solid currentColor;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13px;
+          z-index: 1;
+        }
+
+        .growth-timeline-content {
+          padding: 16px 18px;
+          transition: all 0.2s;
+        }
+
+        .growth-timeline-content:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        .growth-timeline-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+
+        .growth-timeline-title {
+          font-size: 14px;
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+
+        .growth-timeline-meta {
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .growth-type-tag {
+          padding: 1px 8px;
+          border-radius: 8px;
+          background: rgba(108, 92, 231, 0.15);
+          color: var(--secondary);
+          font-size: 10px;
+          font-weight: 500;
+        }
+
+        .growth-points-badge {
+          font-size: 18px;
+          font-weight: 700;
+          flex-shrink: 0;
+        }
+
+        .growth-milestone-info {
+          margin-top: 8px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
         @media (max-width: 768px) {
+          .growth-month-list {
+            padding-left: 40px;
+          }
+          .growth-timeline-dot {
+            left: -32px;
+            width: 22px;
+            height: 22px;
+            font-size: 11px;
+          }
+          .growth-timeline-line {
+            left: -22px;
+          }
+          .growth-summary-stats {
+            width: 100%;
+            justify-content: space-around;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+          }
           .timeline-list {
             padding-left: 40px;
           }

@@ -453,6 +453,16 @@ export const mockTimeline: TimelineEvent[] = [
   },
 ];
 
+export interface GrowthRecord {
+  id: string;
+  points: number;
+  reason: string;
+  sourceType: 'checkin' | 'streak' | 'pact_completed' | 'anniversary' | 'milestone' | 'makeup_checkin';
+  sourceId?: string;
+  createdAt: string;
+  metadata?: Record<string, any>;
+}
+
 export interface Subtask {
   id: string;
   pactId: string;
@@ -471,6 +481,143 @@ export interface Subtask {
   color?: string;
   icon?: string;
 }
+
+export const mockGrowthRecords: GrowthRecord[] = [
+  {
+    id: 'growth-1',
+    points: 5,
+    reason: '「每天说晚安」完成打卡',
+    sourceType: 'checkin',
+    sourceId: 'checkin-1',
+    createdAt: '2024-06-10T22:30:00Z',
+    metadata: { pactTitle: '每天说晚安', checkedBy: 'both' },
+  },
+  {
+    id: 'growth-2',
+    points: 5,
+    reason: '「每天说晚安」完成打卡',
+    sourceType: 'checkin',
+    sourceId: 'checkin-2',
+    createdAt: '2024-06-11T22:15:00Z',
+    metadata: { pactTitle: '每天说晚安', checkedBy: 'both' },
+  },
+  {
+    id: 'growth-3',
+    points: 10,
+    reason: '「每天说晚安」双方共同打卡',
+    sourceType: 'checkin',
+    sourceId: 'checkin-3',
+    createdAt: '2024-06-12T23:00:00Z',
+    metadata: { pactTitle: '每天说晚安', checkedBy: 'user' },
+  },
+  {
+    id: 'growth-4',
+    points: 10,
+    reason: '「每周一起做饭」双方共同打卡',
+    sourceType: 'checkin',
+    sourceId: 'checkin-4',
+    createdAt: '2024-06-08T19:30:00Z',
+    metadata: { pactTitle: '每周一起做饭', checkedBy: 'both' },
+  },
+  {
+    id: 'growth-5',
+    points: 10,
+    reason: '「每周一起做饭」双方共同打卡',
+    sourceType: 'checkin',
+    sourceId: 'checkin-5',
+    createdAt: '2024-06-01T20:00:00Z',
+    metadata: { pactTitle: '每周一起做饭', checkedBy: 'both' },
+  },
+  {
+    id: 'growth-6',
+    points: 10,
+    reason: '「每月一次约会」双方共同打卡',
+    sourceType: 'checkin',
+    sourceId: 'checkin-6',
+    createdAt: '2024-05-20T21:00:00Z',
+    metadata: { pactTitle: '每月一次约会', checkedBy: 'both' },
+  },
+  {
+    id: 'growth-7',
+    points: 5,
+    reason: '「一起读完100本书」完成打卡',
+    sourceType: 'checkin',
+    sourceId: 'checkin-7',
+    createdAt: '2024-06-10T21:00:00Z',
+    metadata: { pactTitle: '一起读完100本书', checkedBy: 'user' },
+  },
+  {
+    id: 'growth-8',
+    points: 2,
+    reason: '补签「每天说晚安」打卡',
+    sourceType: 'makeup_checkin',
+    sourceId: 'checkin-makeup-1',
+    createdAt: '2024-06-10T08:30:00Z',
+    metadata: { pactTitle: '每天说晚安', isMakeup: true },
+  },
+  {
+    id: 'growth-9',
+    points: 30,
+    reason: '「每天说晚安」连续打卡7天达成！',
+    sourceType: 'streak',
+    sourceId: 'pact-1',
+    createdAt: '2024-01-07T22:00:00Z',
+    metadata: { pactTitle: '每天说晚安', streakDays: 7 },
+  },
+  {
+    id: 'growth-10',
+    points: 100,
+    reason: '「每天说晚安」连续打卡30天达成！',
+    sourceType: 'streak',
+    sourceId: 'pact-1',
+    createdAt: '2024-01-30T22:00:00Z',
+    metadata: { pactTitle: '每天说晚安', streakDays: 30 },
+  },
+  {
+    id: 'growth-11',
+    points: 20,
+    reason: '新约定「每天说晚安」已确认生效',
+    sourceType: 'pact_completed',
+    sourceId: 'pact-1',
+    createdAt: '2024-01-01T10:00:00Z',
+    metadata: { pactTitle: '每天说晚安', action: 'confirmed' },
+  },
+  {
+    id: 'growth-12',
+    points: 20,
+    reason: '新约定「每周一起做饭」已确认生效',
+    sourceType: 'pact_completed',
+    sourceId: 'pact-2',
+    createdAt: '2024-02-01T10:00:00Z',
+    metadata: { pactTitle: '每周一起做饭', action: 'confirmed' },
+  },
+  {
+    id: 'growth-13',
+    points: 20,
+    reason: '新约定「每月一次约会」已确认生效',
+    sourceType: 'pact_completed',
+    sourceId: 'pact-3',
+    createdAt: '2024-01-15T09:00:00Z',
+    metadata: { pactTitle: '每月一次约会', action: 'confirmed' },
+  },
+  {
+    id: 'growth-14',
+    points: 20,
+    reason: '新约定「一起读完100本书」已确认生效',
+    sourceType: 'pact_completed',
+    sourceId: 'pact-4',
+    createdAt: '2024-03-01T10:00:00Z',
+    metadata: { pactTitle: '一起读完100本书', action: 'confirmed' },
+  },
+  {
+    id: 'growth-15',
+    points: 50,
+    reason: '在一起1周年纪念日互动！',
+    sourceType: 'anniversary',
+    createdAt: '2024-02-14T09:00:00Z',
+    metadata: { yearsTogether: 1 },
+  },
+];
 
 export const mockSubtasks: Subtask[] = [
   {

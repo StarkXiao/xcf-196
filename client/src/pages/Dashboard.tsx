@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi } from '../services/api';
-import type { Pact, Checkin, TimelineEvent, Reminder, PactStats, CheckinStats, CountdownItem } from '../types';
+import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi, growthApi } from '../services/api';
+import type { Pact, Checkin, TimelineEvent, Reminder, PactStats, CheckinStats, CountdownItem, GrowthStats, GrowthRecord, Badge } from '../types';
 
 function Dashboard() {
   const [pactStats, setPactStats] = useState<PactStats | null>(null);
@@ -11,6 +11,10 @@ function Dashboard() {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
+  const [growthStats, setGrowthStats] = useState<GrowthStats | null>(null);
+  const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
+  const [showBadgesModal, setShowBadgesModal] = useState(false);
+  const [allBadges, setAllBadges] = useState<Badge[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -18,7 +22,7 @@ function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [stats, checkinStatsData, pacts, checkins, timelineData, remindersData, countdownData] =
+      const [stats, checkinStatsData, pacts, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData] =
         await Promise.all([
           pactsApi.getStats(),
           checkinsApi.getStats(),
@@ -27,6 +31,9 @@ function Dashboard() {
           timelineApi.findAll(undefined, 5),
           remindersApi.getSmart(7),
           countdownApi.findAll(),
+          growthApi.getStats(),
+          growthApi.getRecords(8),
+          growthApi.getBadges(),
         ]);
       setPactStats(stats);
       setCheckinStats(checkinStatsData);
@@ -35,9 +42,30 @@ function Dashboard() {
       setTimeline(timelineData);
       setReminders(remindersData);
       setCountdowns(countdownData);
+      setGrowthStats(growthStatsData);
+      setGrowthRecords(growthRecordsData);
+      setAllBadges(badgesData);
     } catch (error) {
       console.error('加载仪表盘数据失败', error);
     }
+  };
+
+  const sourceTypeIcons: Record<string, string> = {
+    checkin: '✅',
+    makeup_checkin: '📝',
+    streak: '🔥',
+    pact_completed: '🎉',
+    anniversary: '💕',
+    milestone: '🏆',
+  };
+
+  const sourceTypeLabels: Record<string, string> = {
+    checkin: '打卡',
+    makeup_checkin: '补签',
+    streak: '连续打卡',
+    pact_completed: '约定',
+    anniversary: '纪念日',
+    milestone: '里程碑',
   };
 
   const moodEmoji = (mood: string) => {
@@ -64,6 +92,58 @@ function Dashboard() {
           愿每一个约定，都像星光一样温柔闪耀
         </p>
       </div>
+
+      {growthStats && (
+        <div className="growth-level-card card">
+          <div className="growth-level-header">
+            <div className="growth-level-icon" style={{ backgroundColor: `${growthStats.currentLevel.color}25`, color: growthStats.currentLevel.color }}>
+              {growthStats.currentLevel.icon}
+            </div>
+            <div className="growth-level-info">
+              <div className="growth-level-name">
+                <span className="level-badge" style={{ backgroundColor: growthStats.currentLevel.color }}>
+                  Lv.{growthStats.currentLevel.level}
+                </span>
+                <span className="level-title">{growthStats.currentLevel.name}</span>
+              </div>
+              <div className="growth-points-row">
+                <span className="total-points">{growthStats.totalPoints}</span>
+                <span className="points-label">成长值</span>
+                <span className="week-points">本周 +{growthStats.thisWeekPoints}</span>
+                <span className="month-points">本月 +{growthStats.thisMonthPoints}</span>
+              </div>
+            </div>
+            <div className="badges-preview" onClick={() => setShowBadgesModal(true)}>
+              <div className="badges-count">
+                <span className="badges-num">{growthStats.unlockedBadgesCount}</span>
+                <span className="badges-total">/{growthStats.totalBadgesCount}</span>
+              </div>
+              <div className="badges-icons">
+                {allBadges.filter(b => b.unlocked).slice(0, 5).map(badge => (
+                  <span key={badge.id} className="badge-mini" style={{ color: badge.color }}>{badge.icon}</span>
+                ))}
+              </div>
+              <span className="badges-label">勋章</span>
+            </div>
+          </div>
+          <div className="growth-progress-wrapper">
+            <div className="growth-progress-bar">
+              <div
+                className="growth-progress-fill"
+                style={{
+                  width: `${growthStats.levelProgress}%`,
+                  background: `linear-gradient(90deg, ${growthStats.currentLevel.color}, ${growthStats.nextLevel?.color || growthStats.currentLevel.color})`,
+                }}
+              />
+            </div>
+            <div className="growth-progress-text muted">
+              {growthStats.nextLevel
+                ? `距离 ${growthStats.nextLevel.name} (Lv.${growthStats.nextLevel.level}) 还需 ${growthStats.pointsToNextLevel} 成长值`
+                : '已达到最高等级！'}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="stats-grid grid grid-4">
         <div className="stat-card card">
@@ -285,9 +365,92 @@ function Dashboard() {
               <div key={event.id} className="timeline-item-small">
                 <div className="timeline-dot">{event.icon}</div>
                 <div className="timeline-content">
-                  <div className="timeline-title">{event.title}</div>
+                  <div className="timeline-title">
+                    {event.title}
+                    {event.metadata?.growthPoints && (
+                      <span className="growth-point-tag" style={{ color: '#f39c12' }}>
+                        +{event.metadata.growthPoints}
+                      </span>
+                    )}
+                  </div>
                   <div className="timeline-date muted">{event.date}</div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">🌱 成长值记录</h3>
+            <Link to="/timeline" className="card-link">
+              查看全部 →
+            </Link>
+          </div>
+          <div className="growth-records-list">
+            {growthRecords.map(record => (
+              <div key={record.id} className="growth-record-item">
+                <div className="growth-record-icon" style={{ color: record.sourceType === 'streak' ? '#f39c12' : record.sourceType === 'anniversary' ? '#fd79a8' : '#6c5ce7' }}>
+                  {sourceTypeIcons[record.sourceType] || '✨'}
+                </div>
+                <div className="growth-record-info">
+                  <div className="growth-record-reason">{record.reason}</div>
+                  <div className="growth-record-meta muted">
+                    <span>{sourceTypeLabels[record.sourceType]}</span>
+                    <span>·</span>
+                    <span>{new Date(record.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="growth-record-points" style={{ color: '#f39c12' }}>
+                  +{record.points}
+                </div>
+              </div>
+            ))}
+            {growthRecords.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">🌱</div>
+                <p className="muted">还没有成长值记录哦</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="dashboard-grid grid grid-2">
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">🎖️ 勋章墙</h3>
+            <button className="card-link" onClick={() => setShowBadgesModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              查看全部 →
+            </button>
+          </div>
+          <div className="badges-grid">
+            {allBadges.slice(0, 6).map(badge => (
+              <div
+                key={badge.id}
+                className={`badge-card ${badge.unlocked ? 'unlocked' : 'locked'}`}
+                title={badge.unlocked ? badge.description : `解锁条件：${badge.condition}`}
+              >
+                <div className="badge-icon-wrapper" style={{ backgroundColor: badge.unlocked ? `${badge.color}20` : 'rgba(255,255,255,0.03)' }}>
+                  <span className="badge-icon" style={{ opacity: badge.unlocked ? 1 : 0.3, filter: badge.unlocked ? 'none' : 'grayscale(100%)' }}>
+                    {badge.icon}
+                  </span>
+                </div>
+                <div className="badge-name">{badge.name}</div>
+                {!badge.unlocked && badge.target && (
+                  <div className="badge-progress">
+                    <div className="badge-progress-bar">
+                      <div
+                        className="badge-progress-fill"
+                        style={{ width: `${Math.min(100, ((badge.progress || 0) / badge.target) * 100)}%`, backgroundColor: badge.color }}
+                      />
+                    </div>
+                    <span className="badge-progress-text">{badge.progress || 0}/{badge.target}</span>
+                  </div>
+                )}
+                {badge.unlocked && (
+                  <div className="badge-unlocked-tag" style={{ color: badge.color }}>已获得</div>
+                )}
               </div>
             ))}
           </div>
@@ -371,6 +534,69 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showBadgesModal && (
+        <div className="modal-overlay" onClick={() => setShowBadgesModal(false)}>
+          <div className="modal badges-modal card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                🎖️ 勋章墙
+                <span className="badges-modal-count muted">
+                  （已获得 {growthStats?.unlockedBadgesCount || 0}/{growthStats?.totalBadgesCount || 0}）
+                </span>
+              </h3>
+              <button className="close-btn" onClick={() => setShowBadgesModal(false)}>✕</button>
+            </div>
+            <div className="badges-modal-content">
+              <div className="badges-full-grid">
+                {allBadges.map(badge => (
+                  <div
+                    key={badge.id}
+                    className={`badge-full-card ${badge.unlocked ? 'unlocked' : 'locked'}`}
+                  >
+                    <div className="badge-full-icon" style={{ backgroundColor: badge.unlocked ? `${badge.color}20` : 'rgba(255,255,255,0.03)' }}>
+                      <span style={{ fontSize: '40px', opacity: badge.unlocked ? 1 : 0.25, filter: badge.unlocked ? 'none' : 'grayscale(100%)' }}>
+                        {badge.icon}
+                      </span>
+                    </div>
+                    <div className="badge-full-name" style={{ color: badge.unlocked ? badge.color : 'var(--text-muted)' }}>
+                      {badge.name}
+                    </div>
+                    <div className="badge-full-desc muted">
+                      {badge.description}
+                    </div>
+                    <div className="badge-full-condition">
+                      <span className="condition-label">解锁条件：</span>
+                      <span>{badge.condition}</span>
+                    </div>
+                    {!badge.unlocked && badge.target && (
+                      <div className="badge-full-progress">
+                        <div className="progress-track">
+                          <div
+                            className="progress-fill"
+                            style={{
+                              width: `${Math.min(100, ((badge.progress || 0) / badge.target) * 100)}%`,
+                              backgroundColor: badge.color,
+                            }}
+                          />
+                        </div>
+                        <span className="progress-text muted">
+                          {badge.progress || 0} / {badge.target}
+                        </span>
+                      </div>
+                    )}
+                    {badge.unlocked && badge.unlockedAt && (
+                      <div className="badge-full-date" style={{ color: badge.color }}>
+                        ✨ {new Date(badge.unlockedAt).toLocaleDateString()} 获得
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .page-header {
@@ -811,7 +1037,461 @@ function Dashboard() {
           color: #ff9800;
         }
 
+        .growth-level-card {
+          margin-bottom: 32px;
+          padding: 24px;
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.08), rgba(253, 121, 168, 0.06));
+          border: 1px solid rgba(108, 92, 231, 0.2);
+        }
+
+        .growth-level-header {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          margin-bottom: 20px;
+        }
+
+        .growth-level-icon {
+          width: 72px;
+          height: 72px;
+          border-radius: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 36px;
+          flex-shrink: 0;
+        }
+
+        .growth-level-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .growth-level-name {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+
+        .level-badge {
+          padding: 3px 10px;
+          border-radius: 10px;
+          font-size: 12px;
+          font-weight: 700;
+          color: white;
+        }
+
+        .level-title {
+          font-size: 22px;
+          font-weight: 700;
+        }
+
+        .growth-points-row {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .total-points {
+          font-size: 32px;
+          font-weight: 700;
+          background: linear-gradient(135deg, var(--primary), var(--accent));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .points-label {
+          font-size: 14px;
+          color: var(--text-muted);
+        }
+
+        .week-points,
+        .month-points {
+          font-size: 12px;
+          padding: 3px 10px;
+          border-radius: 10px;
+          background: rgba(243, 156, 18, 0.12);
+          color: #f39c12;
+          font-weight: 500;
+        }
+
+        .badges-preview {
+          text-align: center;
+          padding: 12px 20px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.04);
+          cursor: pointer;
+          transition: all 0.2s;
+          flex-shrink: 0;
+        }
+
+        .badges-preview:hover {
+          background: rgba(255, 255, 255, 0.08);
+          transform: translateY(-1px);
+        }
+
+        .badges-count {
+          margin-bottom: 4px;
+        }
+
+        .badges-num {
+          font-size: 22px;
+          font-weight: 700;
+          color: var(--accent);
+        }
+
+        .badges-total {
+          font-size: 14px;
+          color: var(--text-muted);
+        }
+
+        .badges-icons {
+          display: flex;
+          justify-content: center;
+          gap: 2px;
+          margin-bottom: 2px;
+        }
+
+        .badge-mini {
+          font-size: 16px;
+        }
+
+        .badges-label {
+          font-size: 11px;
+          color: var(--text-muted);
+        }
+
+        .growth-progress-wrapper {
+          padding: 0 4px;
+        }
+
+        .growth-progress-bar {
+          height: 10px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 5px;
+          overflow: hidden;
+          margin-bottom: 8px;
+        }
+
+        .growth-progress-fill {
+          height: 100%;
+          border-radius: 5px;
+          transition: width 0.5s ease;
+        }
+
+        .growth-progress-text {
+          font-size: 12px;
+        }
+
+        .growth-point-tag {
+          font-size: 12px;
+          font-weight: 600;
+          margin-left: 8px;
+        }
+
+        .growth-records-list {
+          max-height: 280px;
+          overflow-y: auto;
+        }
+
+        .growth-record-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px;
+          border-radius: 10px;
+          margin-bottom: 6px;
+          transition: background-color 0.2s;
+        }
+
+        .growth-record-item:hover {
+          background: rgba(255, 255, 255, 0.04);
+        }
+
+        .growth-record-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.05);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .growth-record-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .growth-record-reason {
+          font-size: 13px;
+          font-weight: 500;
+          margin-bottom: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .growth-record-meta {
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .growth-record-points {
+          font-size: 16px;
+          font-weight: 700;
+          flex-shrink: 0;
+        }
+
+        .badges-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+        }
+
+        .badge-card {
+          text-align: center;
+          padding: 14px 8px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.03);
+          transition: all 0.2s;
+        }
+
+        .badge-card.unlocked {
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .badge-card.unlocked:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .badge-icon-wrapper {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 8px;
+        }
+
+        .badge-icon {
+          font-size: 26px;
+        }
+
+        .badge-name {
+          font-size: 12px;
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+
+        .badge-progress {
+          margin-top: 6px;
+        }
+
+        .badge-progress-bar {
+          height: 4px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 2px;
+          overflow: hidden;
+          margin-bottom: 2px;
+        }
+
+        .badge-progress-fill {
+          height: 100%;
+          border-radius: 2px;
+          opacity: 0.6;
+        }
+
+        .badge-progress-text {
+          font-size: 10px;
+          color: var(--text-muted);
+        }
+
+        .badge-unlocked-tag {
+          font-size: 10px;
+          font-weight: 600;
+          margin-top: 4px;
+        }
+
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+        }
+
+        .badges-modal {
+          width: 100%;
+          max-width: 680px;
+          max-height: 85vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          flex-shrink: 0;
+        }
+
+        .modal-header h3 {
+          font-size: 20px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .badges-modal-count {
+          font-size: 13px;
+          font-weight: 400;
+          margin-left: 8px;
+        }
+
+        .close-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--text-color);
+          font-size: 16px;
+          border: none;
+          cursor: pointer;
+        }
+
+        .badges-modal-content {
+          overflow-y: auto;
+          flex: 1;
+          padding-right: 4px;
+        }
+
+        .badges-full-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 16px;
+        }
+
+        .badge-full-card {
+          padding: 20px 16px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.03);
+          text-align: center;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          transition: all 0.2s;
+        }
+
+        .badge-full-card.unlocked {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+          border-color: rgba(108, 92, 231, 0.25);
+        }
+
+        .badge-full-card.unlocked:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .badge-full-icon {
+          width: 68px;
+          height: 68px;
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 12px;
+        }
+
+        .badge-full-name {
+          font-size: 15px;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+
+        .badge-full-desc {
+          font-size: 12px;
+          line-height: 1.5;
+          margin-bottom: 10px;
+          min-height: 36px;
+        }
+
+        .badge-full-condition {
+          font-size: 11px;
+          padding: 6px 10px;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.04);
+          margin-bottom: 10px;
+          line-height: 1.5;
+        }
+
+        .condition-label {
+          color: var(--text-muted);
+        }
+
+        .badge-full-progress {
+          margin-top: 8px;
+        }
+
+        .badge-full-progress .progress-track {
+          height: 6px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 3px;
+          overflow: hidden;
+          margin-bottom: 4px;
+        }
+
+        .badge-full-progress .progress-fill {
+          height: 100%;
+          border-radius: 3px;
+          opacity: 0.7;
+          transition: width 0.3s;
+        }
+
+        .badge-full-progress .progress-text {
+          font-size: 11px;
+        }
+
+        .badge-full-date {
+          font-size: 11px;
+          font-weight: 600;
+          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
         @media (max-width: 768px) {
+          .badges-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .badges-full-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .growth-level-header {
+            flex-wrap: wrap;
+          }
+          .badges-preview {
+            width: 100%;
+            order: 3;
+          }
           .grid-4 {
             grid-template-columns: repeat(2, 1fr);
           }

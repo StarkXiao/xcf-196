@@ -14,6 +14,10 @@ import type {
   MissedDate,
   Subtask,
   SubtaskStats,
+  GrowthRecord,
+  GrowthStats,
+  GrowthLevel,
+  Badge,
 } from '../types';
 
 const api = axios.create({
@@ -125,4 +129,15 @@ export const subtasksApi = {
     api.post<Subtask>(`/subtasks/${id}/decrement`, { amount }).then(res => res.data),
   reorder: (pactId: string, subtaskIds: string[]) =>
     api.post<Subtask[]>(`/subtasks/reorder/${pactId}`, { subtaskIds }).then(res => res.data),
+};
+
+export const growthApi = {
+  getStats: () => api.get<GrowthStats>('/growth/stats').then(res => res.data),
+  getRecords: (limit?: number, sourceType?: string) =>
+    api.get<GrowthRecord[]>('/growth/records', { params: { limit, sourceType } }).then(res => res.data),
+  getRecord: (id: string) => api.get<GrowthRecord>(`/growth/records/${id}`).then(res => res.data),
+  getBadges: () => api.get<Badge[]>('/growth/badges').then(res => res.data),
+  getLevels: () => api.get<GrowthLevel[]>('/growth/levels').then(res => res.data),
+  addRecord: (data: { points: number; reason: string; sourceType: GrowthRecord['sourceType']; sourceId?: string; metadata?: Record<string, any> }) =>
+    api.post<GrowthRecord>('/growth/records', data).then(res => res.data),
 };

@@ -8,6 +8,7 @@ import { PactsService } from '../pacts/pacts.service';
 import { TimelineService } from '../timeline/timeline.service';
 import { RemindersService } from '../reminders/reminders.service';
 import { SubtasksService } from '../subtasks/subtasks.service';
+import { GrowthService } from '../growth/growth.service';
 
 @Injectable()
 export class CheckinsService {
@@ -20,6 +21,8 @@ export class CheckinsService {
     private readonly remindersService: RemindersService,
     @Inject(forwardRef(() => SubtasksService))
     private readonly subtasksService: SubtasksService,
+    @Inject(forwardRef(() => GrowthService))
+    private readonly growthService: GrowthService,
   ) {}
 
   findAll(pactId?: string, startDate?: string, endDate?: string): Checkin[] {
@@ -87,9 +90,14 @@ export class CheckinsService {
       subtaskProgress: createCheckinDto.subtaskProgress,
     };
     this.checkins.push(newCheckin);
-    this.updatePactStats(createCheckinDto.pactId);
+    const newStreak = this.updatePactStats(createCheckinDto.pactId);
     this.updateSubtaskProgress(newCheckin);
     this.createTimelineEvent(newCheckin, pact.title);
+    try {
+      this.growthService.handleCheckin(newCheckin, pact.title, newStreak);
+    } catch (e) {
+      // ignore
+    }
     return newCheckin;
   }
 
@@ -149,10 +157,15 @@ export class CheckinsService {
     };
     this.checkins.push(makeupCheckin);
 
-    this.updatePactStats(dto.pactId);
+    const newStreak = this.updatePactStats(dto.pactId);
     this.updateSubtaskProgress(makeupCheckin);
     this.createTimelineEvent(makeupCheckin, pact.title);
     this.createMakeupReminder(pact.title, dto.date, diffDays);
+    try {
+      this.growthService.handleCheckin(makeupCheckin, pact.title, newStreak);
+    } catch (e) {
+      // ignore
+    }
 
     return makeupCheckin;
   }
@@ -243,7 +256,7 @@ export class CheckinsService {
     }
   }
 
-  private updatePactStats(pactId: string): void {
+  private updatePactStats(pactId: string): number {
     try {
       const pact = this.pactsService.findOne(pactId);
       const pactCheckins = this.checkins.filter(c => c.pactId === pactId);
@@ -258,8 +271,9 @@ export class CheckinsService {
         currentStreak: newCurrentStreak,
         longestStreak: Math.max(pact.longestStreak, newLongestStreak, newCurrentStreak),
       });
+      return newCurrentStreak;
     } catch (e) {
-      // ignore
+      return 0;
     }
   }
 

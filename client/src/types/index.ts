@@ -174,3 +174,49 @@ export interface MissedCheckinPact {
   pactColor: string;
   missedDates: MissedDate[];
 }
+
+export interface GrowthRecord {
+  id: string;
+  points: number;
+  reason: string;
+  sourceType: 'checkin' | 'streak' | 'pact_completed' | 'anniversary' | 'milestone' | 'makeup_checkin';
+  sourceId?: string;
+  createdAt: string;
+  metadata?: Record<string, any>;
+}
+
+export interface GrowthLevel {
+  level: number;
+  name: string;
+  icon: string;
+  minPoints: number;
+  maxPoints: number;
+  color: string;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  condition: string;
+  unlocked: boolean;
+  unlockedAt?: string;
+  progress?: number;
+  target?: number;
+}
+
+export interface GrowthStats {
+  totalPoints: number;
+  currentLevel: GrowthLevel;
+  nextLevel: GrowthLevel | null;
+  pointsToNextLevel: number;
+  levelProgress: number;
+  totalRecords: number;
+  thisWeekPoints: number;
+  thisMonthPoints: number;
+  badges: Badge[];
+  unlockedBadgesCount: number;
+  totalBadgesCount: number;
+}

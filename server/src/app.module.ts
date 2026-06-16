@@ -6,6 +6,7 @@ import { RemindersModule } from './reminders/reminders.module';
 import { UsersModule } from './users/users.module';
 import { CountdownModule } from './countdown/countdown.module';
 import { SubtasksModule } from './subtasks/subtasks.module';
+import { GrowthModule } from './growth/growth.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { SubtasksModule } from './subtasks/subtasks.module';
     UsersModule,
     CountdownModule,
     SubtasksModule,
+    GrowthModule,
   ],
 })
 export class AppModule {}

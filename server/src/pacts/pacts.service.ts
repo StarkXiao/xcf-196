@@ -1,13 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { CreatePactDto } from './dto/create-pact.dto';
 import { UpdatePactDto } from './dto/update-pact.dto';
 import { Pact } from './entities/pact.entity';
 import { mockPacts } from '../data/seed';
+import { GrowthService } from '../growth/growth.service';
 
 @Injectable()
 export class PactsService {
   private pacts: Pact[] = [...mockPacts];
+
+  constructor(
+    @Inject(forwardRef(() => GrowthService))
+    private readonly growthService: GrowthService,
+  ) {}
 
   findAll(status?: string, category?: string): Pact[] {
     let result = [...this.pacts];
@@ -85,6 +91,11 @@ export class PactsService {
     if (pact.creatorConfirmed && pact.partnerConfirmed) {
       pact.status = 'active';
       pact.confirmedAt = new Date().toISOString();
+      try {
+        this.growthService.handlePactConfirmed(pact);
+      } catch (e) {
+        // ignore
+      }
     }
 
     const index = this.pacts.findIndex(p => p.id === id);
@@ -95,8 +106,17 @@ export class PactsService {
   update(id: string, updatePactDto: UpdatePactDto): Pact {
     const pact = this.findOne(id);
     const index = this.pacts.findIndex(p => p.id === id);
+    const wasCompleted = pact.status === 'completed';
     this.pacts[index] = { ...pact, ...updatePactDto };
-    return this.pacts[index];
+    const updatedPact = this.pacts[index];
+    if (!wasCompleted && updatedPact.status === 'completed') {
+      try {
+        this.growthService.handlePactCompleted(updatedPact);
+      } catch (e) {
+        // ignore
+      }
+    }
+    return updatedPact;
   }
 
   remove(id: string): void {
