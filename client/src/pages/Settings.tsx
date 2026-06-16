@@ -48,7 +48,12 @@ function Settings() {
     setFormData({
       ...formData,
       notifications: {
-        ...formData.notifications,
+        dailyReminder: formData.notifications?.dailyReminder ?? true,
+        pactReminder: formData.notifications?.pactReminder ?? true,
+        checkinReminder: formData.notifications?.checkinReminder ?? true,
+        anniversaryReminder: formData.notifications?.anniversaryReminder ?? true,
+        smartDedup: formData.notifications?.smartDedup ?? true,
+        staggeredDelivery: formData.notifications?.staggeredDelivery ?? true,
         [key]: value,
       },
     });

@@ -8,7 +8,7 @@ import { SubtasksModule } from '../subtasks/subtasks.module';
 import { GrowthModule } from '../growth/growth.module';
 
 @Module({
-  imports: [PactsModule, TimelineModule, RemindersModule, forwardRef(() => SubtasksModule), forwardRef(() => GrowthModule)],
+  imports: [forwardRef(() => PactsModule), forwardRef(() => TimelineModule), forwardRef(() => RemindersModule), forwardRef(() => SubtasksModule), forwardRef(() => GrowthModule)],
   controllers: [CheckinsController],
   providers: [CheckinsService],
   exports: [CheckinsService],

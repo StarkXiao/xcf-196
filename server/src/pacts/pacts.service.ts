@@ -28,7 +28,10 @@ export class PactsService {
   ) {}
 
   findAll(status?: string, category?: string): Pact[] {
-    let result = [...this.pacts];
+    if (this.pacts) {
+      this.checkAndResumeDuePacts();
+    }
+    let result = [...(this.pacts || [])];
     if (status) {
       result = result.filter(p => p.status === status);
     }
@@ -39,7 +42,10 @@ export class PactsService {
   }
 
   findOne(id: string): Pact {
-    const pact = this.pacts.find(p => p.id === id);
+    if (this.pacts) {
+      this.checkAndResumeDuePacts();
+    }
+    const pact = (this.pacts || []).find(p => p.id === id);
     if (!pact) {
       throw new NotFoundException(`约定 #${id} 不存在`);
     }
@@ -205,12 +211,15 @@ export class PactsService {
   }
 
   getUpcomingResumes(days: number = 7): Pact[] {
+    if (this.pacts) {
+      this.checkAndResumeDuePacts();
+    }
     const now = new Date();
     const today = new Date(now.toISOString().split('T')[0]);
     const endDate = new Date(today);
     endDate.setDate(endDate.getDate() + days);
 
-    return this.pacts
+    return (this.pacts || [])
       .filter(pact => {
         if (pact.status !== 'paused' || !pact.resumeDate) return false;
         const resumeDate = new Date(pact.resumeDate);
@@ -220,12 +229,16 @@ export class PactsService {
   }
 
   getPausedWithResumePlan(): Pact[] {
-    return this.pacts
+    if (this.pacts) {
+      this.checkAndResumeDuePacts();
+    }
+    return (this.pacts || [])
       .filter(pact => pact.status === 'paused' && !!pact.resumeDate)
       .sort((a, b) => new Date(a.resumeDate!).getTime() - new Date(b.resumeDate!).getTime());
   }
 
   checkAndResumeDuePacts(): Pact[] {
+    if (!this.pacts) return [];
     const today = new Date().toISOString().split('T')[0];
     const resumedPacts: Pact[] = [];
 
@@ -253,16 +266,17 @@ export class PactsService {
 
   remove(id: string): void {
     this.findOne(id);
-    this.pacts = this.pacts.filter(p => p.id !== id);
+    this.pacts = (this.pacts || []).filter(p => p.id !== id);
   }
 
   getStats(): { total: number; active: number; pendingConfirmation: number; completed: number; paused: number; totalCheckins: number } {
-    const total = this.pacts.length;
-    const active = this.pacts.filter(p => p.status === 'active').length;
-    const pendingConfirmation = this.pacts.filter(p => p.status === 'pending_confirmation').length;
-    const completed = this.pacts.filter(p => p.status === 'completed').length;
-    const paused = this.pacts.filter(p => p.status === 'paused').length;
-    const totalCheckins = this.pacts.reduce((sum, p) => sum + p.totalCheckins, 0);
+    const pacts = this.pacts || [];
+    const total = pacts.length;
+    const active = pacts.filter(p => p.status === 'active').length;
+    const pendingConfirmation = pacts.filter(p => p.status === 'pending_confirmation').length;
+    const completed = pacts.filter(p => p.status === 'completed').length;
+    const paused = pacts.filter(p => p.status === 'paused').length;
+    const totalCheckins = pacts.reduce((sum, p) => sum + p.totalCheckins, 0);
     return { total, active, pendingConfirmation, completed, paused, totalCheckins };
   }
 }

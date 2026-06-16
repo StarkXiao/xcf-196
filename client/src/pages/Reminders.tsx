@@ -21,13 +21,21 @@ function Reminders() {
   const [pacts, setPacts] = useState<Pact[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    type: 'pact' | 'anniversary' | 'custom';
+    date: string;
+    time: string;
+    repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+    pactId: string;
+  }>({
     title: '',
     description: '',
-    type: 'custom' as const,
+    type: 'custom',
     date: '',
     time: '09:00',
-    repeat: 'none' as const,
+    repeat: 'none',
     pactId: '',
   });
 

@@ -17,7 +17,9 @@ export class CheckinsService {
   constructor(
     @Inject(forwardRef(() => PactsService))
     private readonly pactsService: PactsService,
+    @Inject(forwardRef(() => TimelineService))
     private readonly timelineService: TimelineService,
+    @Inject(forwardRef(() => RemindersService))
     private readonly remindersService: RemindersService,
     @Inject(forwardRef(() => SubtasksService))
     private readonly subtasksService: SubtasksService,
@@ -52,6 +54,10 @@ export class CheckinsService {
 
     if (pact.status === 'pending_confirmation') {
       throw new BadRequestException(`「${pact.title}」尚未双方确认，暂时无法打卡`);
+    }
+
+    if (pact.status === 'paused') {
+      throw new BadRequestException(`「${pact.title}」已暂停，无法打卡${pact.resumeDate ? `，计划于 ${pact.resumeDate} 恢复` : ''}`);
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -106,6 +112,10 @@ export class CheckinsService {
 
     if (pact.status === 'pending_confirmation') {
       throw new BadRequestException(`「${pact.title}」尚未双方确认，暂时无法打卡`);
+    }
+
+    if (pact.status === 'paused') {
+      throw new BadRequestException(`「${pact.title}」已暂停，无法补签${pact.resumeDate ? `，计划于 ${pact.resumeDate} 恢复` : ''}`);
     }
 
     if (!pact.allowMakeup) {

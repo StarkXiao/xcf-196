@@ -35,10 +35,17 @@ function Pacts() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
   const [editingPact, setEditingPact] = useState<Pact | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    category: 'daily' | 'weekly' | 'monthly' | 'special';
+    startDate: string;
+    icon: string;
+    color: string;
+  }>({
     title: '',
     description: '',
-    category: 'daily' as const,
+    category: 'daily',
     startDate: new Date().toISOString().split('T')[0],
     icon: '✨',
     color: '#9b59b6',
