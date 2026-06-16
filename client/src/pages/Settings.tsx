@@ -54,6 +54,8 @@ function Settings() {
         pactReminder: formData.notifications?.pactReminder ?? true,
         checkinReminder: formData.notifications?.checkinReminder ?? true,
         anniversaryReminder: formData.notifications?.anniversaryReminder ?? true,
+        smartDedup: formData.notifications?.smartDedup ?? true,
+        staggeredDelivery: formData.notifications?.staggeredDelivery ?? true,
         [key]: value,
       },
     });
@@ -249,6 +251,44 @@ function Settings() {
                 <span className="slider" />
               </label>
             </div>
+
+            <div className="notification-divider" />
+
+            <div className="notification-item">
+              <div className="notification-info">
+                <div className="notification-icon">🔄</div>
+                <div>
+                  <div className="notification-title">智能去重聚合</div>
+                  <div className="notification-desc muted">同日多提醒时按优先级自动聚合，避免信息轰炸</div>
+                </div>
+              </div>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={formData.notifications?.smartDedup ?? true}
+                  onChange={e => updateNotifications('smartDedup', e.target.checked)}
+                />
+                <span className="slider" />
+              </label>
+            </div>
+
+            <div className="notification-item">
+              <div className="notification-info">
+                <div className="notification-icon">⏰</div>
+                <div>
+                  <div className="notification-title">错峰发送策略</div>
+                  <div className="notification-desc muted">按重要程度分散在不同时段推送，防止同时打扰</div>
+                </div>
+              </div>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={formData.notifications?.staggeredDelivery ?? true}
+                  onChange={e => updateNotifications('staggeredDelivery', e.target.checked)}
+                />
+                <span className="slider" />
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -416,6 +456,12 @@ function Settings() {
           display: flex;
           flex-direction: column;
           gap: 12px;
+        }
+
+        .notification-divider {
+          height: 1px;
+          background: rgba(255, 255, 255, 0.08);
+          margin: 8px 0;
         }
 
         .notification-item {

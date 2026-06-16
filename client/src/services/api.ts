@@ -82,6 +82,10 @@ export const remindersApi = {
   remove: (id: string) => api.delete(`/reminders/${id}`),
   getUpcomingAnniversary: (days?: number) =>
     api.get<Reminder[]>('/reminders/upcoming-anniversary', { params: { days } }).then(res => res.data),
+  getSmart: (days?: number) =>
+    api.get<Reminder[]>('/reminders/smart', { params: { days } }).then(res => res.data),
+  getToday: () =>
+    api.get<Reminder[]>('/reminders/today').then(res => res.data),
 };
 
 export const countdownApi = {

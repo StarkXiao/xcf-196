@@ -77,6 +77,9 @@ export interface Reminder {
   repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   isActive: boolean;
   pactId?: string;
+  priority?: 'critical' | 'high' | 'medium' | 'low';
+  isAggregated?: boolean;
+  aggregatedCount?: number;
 }
 
 export interface TimelineEvent {
@@ -104,6 +107,8 @@ export interface User {
     pactReminder: boolean;
     checkinReminder: boolean;
     anniversaryReminder: boolean;
+    smartDedup: boolean;
+    staggeredDelivery: boolean;
   };
 }
 

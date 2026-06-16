@@ -13,6 +13,8 @@ export interface User {
     pactReminder: boolean;
     checkinReminder: boolean;
     anniversaryReminder: boolean;
+    smartDedup: boolean;
+    staggeredDelivery: boolean;
   };
 }
 
@@ -65,6 +67,9 @@ export interface Reminder {
   repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   isActive: boolean;
   pactId?: string;
+  priority?: 'critical' | 'high' | 'medium' | 'low';
+  isAggregated?: boolean;
+  aggregatedCount?: number;
 }
 
 export interface TimelineEvent {
@@ -92,6 +97,8 @@ export const mockUser: User = {
     pactReminder: true,
     checkinReminder: true,
     anniversaryReminder: true,
+    smartDedup: true,
+    staggeredDelivery: true,
   },
 };
 

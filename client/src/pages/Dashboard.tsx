@@ -25,7 +25,7 @@ function Dashboard() {
           pactsApi.findAll('active'),
           checkinsApi.findAll(undefined, undefined, undefined),
           timelineApi.findAll(undefined, 5),
-          remindersApi.findAll(true),
+          remindersApi.getSmart(7),
           countdownApi.findAll(),
         ]);
       setPactStats(stats);
@@ -52,10 +52,6 @@ function Dashboard() {
   };
 
   const upcomingCountdowns = countdowns.filter(c => c.isNear || c.isToday);
-
-  const anniversaryReminders = reminders.filter(
-    r => r.type === 'anniversary' && r.isActive,
-  );
 
   return (
     <div className="dashboard">
@@ -326,24 +322,46 @@ function Dashboard() {
                 ))}
               </div>
             )}
-            {anniversaryReminders.map(reminder => (
-              <div key={`ar-${reminder.id}`} className="reminder-item reminder-anniversary">
-                <div className="reminder-time">💕</div>
-                <div className="reminder-info">
-                  <div className="reminder-title">{reminder.title}</div>
-                  <div className="reminder-desc muted">{reminder.description}</div>
+            {reminders.slice(0, 5).map(reminder => {
+              const priorityColor: Record<string, string> = {
+                critical: '#e91e63',
+                high: '#ff9800',
+                medium: '#6c5ce7',
+                low: '#74b9ff',
+              };
+              const color = reminder.priority ? priorityColor[reminder.priority] : undefined;
+              return (
+                <div
+                  key={reminder.id}
+                  className={`reminder-item ${
+                    reminder.isAggregated ? 'reminder-aggregated' : ''
+                  } ${reminder.type === 'anniversary' ? 'reminder-anniversary' : ''}`}
+                  style={color ? { borderLeft: `3px solid ${color}` } : {}}
+                >
+                  <div
+                    className="reminder-time"
+                    style={{ color: color || 'var(--primary)' }}
+                  >
+                    {reminder.isAggregated ? (
+                      <span className="aggregated-badge">{reminder.aggregatedCount}项</span>
+                    ) : reminder.type === 'anniversary' ? (
+                      '💕'
+                    ) : (
+                      reminder.time
+                    )}
+                  </div>
+                  <div className="reminder-info">
+                    <div className="reminder-title">
+                      {reminder.isAggregated && <span className="aggregated-icon">📦</span>}
+                      {reminder.title}
+                      {reminder.priority === 'critical' && <span className="priority-tag priority-critical">紧急</span>}
+                      {reminder.priority === 'high' && !reminder.isAggregated && <span className="priority-tag priority-high">重要</span>}
+                    </div>
+                    <div className="reminder-desc muted">{reminder.description}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
-            {reminders.filter(r => r.type !== 'anniversary').slice(0, 3).map(reminder => (
-              <div key={reminder.id} className="reminder-item">
-                <div className="reminder-time">{reminder.time}</div>
-                <div className="reminder-info">
-                  <div className="reminder-title">{reminder.title}</div>
-                  <div className="reminder-desc muted">{reminder.description}</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {reminders.length === 0 && upcomingCountdowns.length === 0 && (
               <div className="empty-state">
                 <div className="empty-icon">🔕</div>
@@ -751,6 +769,46 @@ function Dashboard() {
 
         .reminder-desc {
           font-size: 12px;
+        }
+
+        .reminder-item.reminder-aggregated {
+          background: rgba(108, 92, 231, 0.08);
+          border-left: 3px solid #6c5ce7;
+        }
+
+        .aggregated-badge {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 10px;
+          background: rgba(108, 92, 231, 0.2);
+          color: #6c5ce7;
+          font-size: 12px;
+          font-weight: 600;
+          min-width: unset;
+        }
+
+        .aggregated-icon {
+          margin-right: 4px;
+        }
+
+        .priority-tag {
+          display: inline-block;
+          padding: 1px 6px;
+          border-radius: 6px;
+          font-size: 10px;
+          font-weight: 600;
+          margin-left: 8px;
+          vertical-align: middle;
+        }
+
+        .priority-tag.priority-critical {
+          background: rgba(233, 30, 99, 0.15);
+          color: #e91e63;
+        }
+
+        .priority-tag.priority-high {
+          background: rgba(255, 152, 0, 0.15);
+          color: #ff9800;
         }
 
         @media (max-width: 768px) {

@@ -13,5 +13,7 @@ export interface User {
     pactReminder: boolean;
     checkinReminder: boolean;
     anniversaryReminder: boolean;
+    smartDedup: boolean;
+    staggeredDelivery: boolean;
   };
 }

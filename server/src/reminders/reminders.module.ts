@@ -2,9 +2,10 @@ import { Module, forwardRef } from '@nestjs/common';
 import { RemindersService } from './reminders.service';
 import { RemindersController } from './reminders.controller';
 import { PactsModule } from '../pacts/pacts.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [forwardRef(() => PactsModule)],
+  imports: [forwardRef(() => PactsModule), forwardRef(() => UsersModule)],
   controllers: [RemindersController],
   providers: [RemindersService],
   exports: [RemindersService],
