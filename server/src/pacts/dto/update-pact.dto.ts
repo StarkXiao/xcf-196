@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsInt, Min } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsDateString, IsInt, Min, IsBoolean } from 'class-validator';
 
 export class UpdatePactDto {
   @IsString()
@@ -47,4 +47,22 @@ export class UpdatePactDto {
   @Min(0)
   @IsOptional()
   totalCheckins?: number;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  totalMakeupCheckins?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  allowMakeup?: boolean;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  maxMakeupDays?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  requireMakeupReason?: boolean;
 }

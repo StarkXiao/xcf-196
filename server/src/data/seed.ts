@@ -25,8 +25,12 @@ export interface Pact {
   currentStreak: number;
   longestStreak: number;
   totalCheckins: number;
+  totalMakeupCheckins: number;
   color: string;
   icon: string;
+  allowMakeup: boolean;
+  maxMakeupDays: number;
+  requireMakeupReason: boolean;
 }
 
 export interface Checkin {
@@ -37,6 +41,10 @@ export interface Checkin {
   mood: 'happy' | 'normal' | 'tired' | 'excited' | 'grateful';
   checkedBy: 'user' | 'partner' | 'both';
   photoUrl?: string;
+  isMakeup: boolean;
+  makeupReason?: string;
+  makeupAt?: string;
+  createdAt: string;
 }
 
 export interface Reminder {
@@ -54,11 +62,12 @@ export interface Reminder {
 export interface TimelineEvent {
   id: string;
   date: string;
-  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary';
+  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin';
   title: string;
   description: string;
   icon: string;
   pactId?: string;
+  metadata?: Record<string, any>;
 }
 
 export const mockUser: User = {
@@ -88,8 +97,12 @@ export const mockPacts: Pact[] = [
     currentStreak: 45,
     longestStreak: 60,
     totalCheckins: 156,
+    totalMakeupCheckins: 3,
     color: '#9b59b6',
     icon: '🌙',
+    allowMakeup: true,
+    maxMakeupDays: 7,
+    requireMakeupReason: true,
   },
   {
     id: 'pact-2',
@@ -101,8 +114,12 @@ export const mockPacts: Pact[] = [
     currentStreak: 12,
     longestStreak: 15,
     totalCheckins: 24,
+    totalMakeupCheckins: 1,
     color: '#e74c3c',
     icon: '🍳',
+    allowMakeup: true,
+    maxMakeupDays: 14,
+    requireMakeupReason: true,
   },
   {
     id: 'pact-3',
@@ -114,8 +131,12 @@ export const mockPacts: Pact[] = [
     currentStreak: 5,
     longestStreak: 5,
     totalCheckins: 5,
+    totalMakeupCheckins: 0,
     color: '#f39c12',
     icon: '💝',
+    allowMakeup: true,
+    maxMakeupDays: 30,
+    requireMakeupReason: true,
   },
   {
     id: 'pact-4',
@@ -127,8 +148,12 @@ export const mockPacts: Pact[] = [
     currentStreak: 8,
     longestStreak: 10,
     totalCheckins: 23,
+    totalMakeupCheckins: 2,
     color: '#3498db',
     icon: '📚',
+    allowMakeup: true,
+    maxMakeupDays: 30,
+    requireMakeupReason: false,
   },
   {
     id: 'pact-5',
@@ -140,8 +165,12 @@ export const mockPacts: Pact[] = [
     currentStreak: 0,
     longestStreak: 20,
     totalCheckins: 45,
+    totalMakeupCheckins: 0,
     color: '#1abc9c',
     icon: '💧',
+    allowMakeup: false,
+    maxMakeupDays: 0,
+    requireMakeupReason: false,
   },
 ];
 
@@ -153,6 +182,8 @@ export const mockCheckins: Checkin[] = [
     note: '今天工作好累，但听到你的声音就安心了',
     mood: 'tired',
     checkedBy: 'both',
+    isMakeup: false,
+    createdAt: '2024-06-10T22:30:00Z',
   },
   {
     id: 'checkin-2',
@@ -161,6 +192,8 @@ export const mockCheckins: Checkin[] = [
     note: '晚安呀，梦里见~',
     mood: 'happy',
     checkedBy: 'both',
+    isMakeup: false,
+    createdAt: '2024-06-11T22:15:00Z',
   },
   {
     id: 'checkin-3',
@@ -169,6 +202,8 @@ export const mockCheckins: Checkin[] = [
     note: '今天很想你',
     mood: 'grateful',
     checkedBy: 'user',
+    isMakeup: false,
+    createdAt: '2024-06-12T23:00:00Z',
   },
   {
     id: 'checkin-4',
@@ -177,6 +212,8 @@ export const mockCheckins: Checkin[] = [
     note: '做了红烧肉，超级好吃！',
     mood: 'excited',
     checkedBy: 'both',
+    isMakeup: false,
+    createdAt: '2024-06-08T19:30:00Z',
   },
   {
     id: 'checkin-5',
@@ -185,6 +222,8 @@ export const mockCheckins: Checkin[] = [
     note: '一起做了意大利面，虽然有点糊但是很开心',
     mood: 'happy',
     checkedBy: 'both',
+    isMakeup: false,
+    createdAt: '2024-06-01T20:00:00Z',
   },
   {
     id: 'checkin-6',
@@ -193,6 +232,8 @@ export const mockCheckins: Checkin[] = [
     note: '520快乐！去了我们第一次约会的餐厅',
     mood: 'excited',
     checkedBy: 'both',
+    isMakeup: false,
+    createdAt: '2024-05-20T21:00:00Z',
   },
   {
     id: 'checkin-7',
@@ -201,6 +242,20 @@ export const mockCheckins: Checkin[] = [
     note: '《小王子》第3章，狐狸的那段真的很治愈',
     mood: 'grateful',
     checkedBy: 'user',
+    isMakeup: false,
+    createdAt: '2024-06-10T21:00:00Z',
+  },
+  {
+    id: 'checkin-makeup-1',
+    pactId: 'pact-1',
+    date: '2024-06-09',
+    note: '昨天加班到太晚了，今天补上',
+    mood: 'tired',
+    checkedBy: 'user',
+    isMakeup: true,
+    makeupReason: '昨晚加班到凌晨，忘记说晚安了，抱歉~',
+    makeupAt: '2024-06-10T08:30:00Z',
+    createdAt: '2024-06-10T08:30:00Z',
   },
 ];
 

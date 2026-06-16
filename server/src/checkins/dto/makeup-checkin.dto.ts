@@ -1,12 +1,12 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsDateString, IsNotEmpty } from 'class-validator';
 
-export class CreateCheckinDto {
+export class MakeupCheckinDto {
   @IsString()
   pactId: string;
 
   @IsDateString()
-  @IsOptional()
-  date?: string;
+  @IsNotEmpty()
+  date: string;
 
   @IsString()
   @IsOptional()
@@ -23,10 +23,6 @@ export class CreateCheckinDto {
   @IsString()
   @IsOptional()
   photoUrl?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  isMakeup?: boolean;
 
   @IsString()
   @IsOptional()

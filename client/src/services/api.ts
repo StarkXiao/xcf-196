@@ -8,6 +8,8 @@ import type {
   AnniversaryInfo,
   PactStats,
   CheckinStats,
+  MissedCheckinPact,
+  MissedDate,
 } from '../types';
 
 const api = axios.create({
@@ -31,6 +33,19 @@ export const checkinsApi = {
   findOne: (id: string) => api.get<Checkin>(`/checkins/${id}`).then(res => res.data),
   create: (data: Partial<Checkin>) =>
     api.post<Checkin>('/checkins', data).then(res => res.data),
+  makeup: (data: {
+    pactId: string;
+    date: string;
+    note?: string;
+    mood?: Checkin['mood'];
+    checkedBy?: Checkin['checkedBy'];
+    photoUrl?: string;
+    makeupReason?: string;
+  }) => api.post<Checkin>('/checkins/makeup', data).then(res => res.data),
+  getMissed: () =>
+    api.get<MissedCheckinPact[]>('/checkins/missed').then(res => res.data),
+  getMissedByPact: (pactId: string) =>
+    api.get<MissedDate[]>(`/checkins/missed/${pactId}`).then(res => res.data),
   remove: (id: string) => api.delete(`/checkins/${id}`),
   getStats: (pactId?: string) =>
     api.get<CheckinStats>('/checkins/stats', { params: { pactId } }).then(res => res.data),
@@ -40,6 +55,8 @@ export const timelineApi = {
   findAll: (type?: string, limit?: number) =>
     api.get<TimelineEvent[]>('/timeline', { params: { type, limit } }).then(res => res.data),
   findOne: (id: string) => api.get<TimelineEvent>(`/timeline/${id}`).then(res => res.data),
+  create: (data: Partial<TimelineEvent>) =>
+    api.post<TimelineEvent>('/timeline', data).then(res => res.data),
 };
 
 export const remindersApi = {

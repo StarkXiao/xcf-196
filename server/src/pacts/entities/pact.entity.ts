@@ -9,6 +9,10 @@ export interface Pact {
   currentStreak: number;
   longestStreak: number;
   totalCheckins: number;
+  totalMakeupCheckins: number;
   color: string;
   icon: string;
+  allowMakeup: boolean;
+  maxMakeupDays: number;
+  requireMakeupReason: boolean;
 }

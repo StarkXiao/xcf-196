@@ -9,8 +9,12 @@ export interface Pact {
   currentStreak: number;
   longestStreak: number;
   totalCheckins: number;
+  totalMakeupCheckins: number;
   color: string;
   icon: string;
+  allowMakeup: boolean;
+  maxMakeupDays: number;
+  requireMakeupReason: boolean;
 }
 
 export interface Checkin {
@@ -21,6 +25,10 @@ export interface Checkin {
   mood: 'happy' | 'normal' | 'tired' | 'excited' | 'grateful';
   checkedBy: 'user' | 'partner' | 'both';
   photoUrl?: string;
+  isMakeup: boolean;
+  makeupReason?: string;
+  makeupAt?: string;
+  createdAt: string;
 }
 
 export interface Reminder {
@@ -38,11 +46,12 @@ export interface Reminder {
 export interface TimelineEvent {
   id: string;
   date: string;
-  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary';
+  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin';
   title: string;
   description: string;
   icon: string;
   pactId?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface User {
@@ -79,4 +88,21 @@ export interface CheckinStats {
   thisMonth: number;
   thisWeek: number;
   today: number;
+  makeupCount: number;
+  normalCount: number;
+  completionRate: number;
+}
+
+export interface MissedDate {
+  date: string;
+  daysAgo: number;
+  canMakeup: boolean;
+}
+
+export interface MissedCheckinPact {
+  pactId: string;
+  pactTitle: string;
+  pactIcon: string;
+  pactColor: string;
+  missedDates: MissedDate[];
 }

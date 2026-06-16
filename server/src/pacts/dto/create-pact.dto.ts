@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsInt, Min } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsDateString, IsInt, Min, IsBoolean } from 'class-validator';
 
 export class CreatePactDto {
   @IsString()
@@ -25,4 +25,17 @@ export class CreatePactDto {
   @IsString()
   @IsOptional()
   icon?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  allowMakeup?: boolean;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  maxMakeupDays?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  requireMakeupReason?: boolean;
 }

@@ -40,8 +40,12 @@ export class PactsService {
       currentStreak: 0,
       longestStreak: 0,
       totalCheckins: 0,
+      totalMakeupCheckins: 0,
       color: createPactDto.color || '#9b59b6',
       icon: createPactDto.icon || '✨',
+      allowMakeup: createPactDto.allowMakeup !== undefined ? createPactDto.allowMakeup : true,
+      maxMakeupDays: createPactDto.maxMakeupDays || 7,
+      requireMakeupReason: createPactDto.requireMakeupReason !== undefined ? createPactDto.requireMakeupReason : true,
     };
     this.pacts.push(newPact);
     return newPact;
