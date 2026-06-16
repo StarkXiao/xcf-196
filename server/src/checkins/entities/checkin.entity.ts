@@ -10,4 +10,6 @@ export interface Checkin {
   makeupReason?: string;
   makeupAt?: string;
   createdAt: string;
+  subtaskIds?: string[];
+  subtaskProgress?: Record<string, number>;
 }

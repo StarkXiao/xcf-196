@@ -21,6 +21,34 @@ export interface Pact {
   confirmedAt?: string;
 }
 
+export interface Subtask {
+  id: string;
+  pactId: string;
+  title: string;
+  description: string;
+  order: number;
+  status: 'pending' | 'in_progress' | 'completed';
+  targetCount: number;
+  currentCount: number;
+  unit: string;
+  deadline?: string;
+  createdAt: string;
+  completedAt?: string;
+  isMilestone: boolean;
+  milestoneReward?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface SubtaskStats {
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  completionRate: number;
+  overallProgress: number;
+}
+
 export interface Checkin {
   id: string;
   pactId: string;
@@ -33,6 +61,8 @@ export interface Checkin {
   makeupReason?: string;
   makeupAt?: string;
   createdAt: string;
+  subtaskIds?: string[];
+  subtaskProgress?: Record<string, number>;
 }
 
 export interface Reminder {

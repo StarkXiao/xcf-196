@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { checkinsApi, pactsApi } from '../services/api';
-import type { Checkin, Pact, CheckinStats, MissedCheckinPact } from '../types';
+import { checkinsApi, pactsApi, subtasksApi } from '../services/api';
+import type { Checkin, Pact, CheckinStats, MissedCheckinPact, Subtask } from '../types';
 
 const moodOptions = [
   { value: 'happy', label: '开心', emoji: '😊' },
@@ -41,12 +41,15 @@ function Checkins() {
   const [selectedPact, setSelectedPact] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
   const [showMakeupModal, setShowMakeupModal] = useState(false);
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [formData, setFormData] = useState({
     pactId: '',
     date: new Date().toISOString().split('T')[0],
     note: '',
     mood: 'happy' as const,
     checkedBy: 'both' as const,
+    subtaskIds: [] as string[],
+    subtaskProgress: {} as Record<string, number>,
   });
   const [makeupFormData, setMakeupFormData] = useState<MakeupFormData | null>(null);
   const [error, setError] = useState<string>('');
@@ -70,9 +73,19 @@ function Checkins() {
       setMissedCheckins(missedData);
       if (pactsData.length > 0 && !formData.pactId) {
         setFormData(prev => ({ ...prev, pactId: pactsData[0].id }));
+        loadSubtasksForPact(pactsData[0].id);
       }
     } catch (error) {
       console.error('加载打卡数据失败', error);
+    }
+  };
+
+  const loadSubtasksForPact = async (pactId: string) => {
+    try {
+      const data = await subtasksApi.findAll(pactId);
+      setSubtasks(data.filter(s => s.status !== 'completed'));
+    } catch (error) {
+      console.error('加载子任务失败', error);
     }
   };
 
@@ -108,7 +121,12 @@ function Checkins() {
       note: '',
       mood: 'happy',
       checkedBy: 'both',
+      subtaskIds: [],
+      subtaskProgress: {},
     });
+    if (pacts[0]?.id) {
+      loadSubtasksForPact(pacts[0].id);
+    }
   };
 
   const openMakeupModal = (pact: MissedCheckinPact, date: string) => {
@@ -387,7 +405,16 @@ function Checkins() {
                 <label>选择约定</label>
                 <select
                   value={formData.pactId}
-                  onChange={e => setFormData({ ...formData, pactId: e.target.value })}
+                  onChange={e => {
+                    const newPactId = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      pactId: newPactId, 
+                      subtaskIds: [], 
+                      subtaskProgress: {} 
+                    });
+                    loadSubtasksForPact(newPactId);
+                  }}
                   required
                 >
                   {pacts.map(pact => (
@@ -457,6 +484,107 @@ function Checkins() {
                   ))}
                 </div>
               </div>
+
+              {subtasks.length > 0 && (
+                <div className="form-group">
+                  <label>同步子任务进度（可选）</label>
+                  <p className="form-hint muted">选择本次打卡关联的子任务，打卡后将自动更新子任务进度</p>
+                  <div className="subtask-checkin-list">
+                    {subtasks.map(subtask => {
+                      const isSelected = formData.subtaskIds.includes(subtask.id);
+                      const progress = formData.subtaskProgress[subtask.id] || 1;
+                      return (
+                        <div
+                          key={subtask.id}
+                          className={`subtask-checkin-item ${isSelected ? 'selected' : ''}`}
+                        >
+                          <div className="subtask-checkin-header">
+                            <label className="subtask-checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={e => {
+                                  const checked = e.target.checked;
+                                  if (checked) {
+                                    setFormData({
+                                      ...formData,
+                                      subtaskIds: [...formData.subtaskIds, subtask.id],
+                                      subtaskProgress: {
+                                        ...formData.subtaskProgress,
+                                        [subtask.id]: 1,
+                                      },
+                                    });
+                                  } else {
+                                    const newProgress = { ...formData.subtaskProgress };
+                                    delete newProgress[subtask.id];
+                                    setFormData({
+                                      ...formData,
+                                      subtaskIds: formData.subtaskIds.filter(id => id !== subtask.id),
+                                      subtaskProgress: newProgress,
+                                    });
+                                  }
+                                }}
+                              />
+                              <span className="subtask-checkin-icon" style={{ color: subtask.color }}>
+                                {subtask.icon || '📋'}
+                              </span>
+                              <span className="subtask-checkin-title">{subtask.title}</span>
+                              {subtask.isMilestone && (
+                                <span className="milestone-mini-badge">🏆</span>
+                              )}
+                            </label>
+                            <span className="subtask-checkin-progress muted">
+                              {subtask.currentCount}/{subtask.targetCount} {subtask.unit}
+                            </span>
+                          </div>
+                          {isSelected && (
+                            <div className="subtask-progress-adjuster">
+                              <span className="muted">本次增加：</span>
+                              <div className="progress-adjuster-controls">
+                                <button
+                                  type="button"
+                                  className="adjuster-btn"
+                                  onClick={() => {
+                                    const newProgress = Math.max(1, progress - 1);
+                                    setFormData({
+                                      ...formData,
+                                      subtaskProgress: {
+                                        ...formData.subtaskProgress,
+                                        [subtask.id]: newProgress,
+                                      },
+                                    });
+                                  }}
+                                >
+                                  -
+                                </button>
+                                <span className="adjuster-value">{progress}</span>
+                                <button
+                                  type="button"
+                                  className="adjuster-btn"
+                                  onClick={() => {
+                                    const maxAdd = subtask.targetCount - subtask.currentCount;
+                                    const newProgress = Math.min(progress + 1, Math.max(1, maxAdd));
+                                    setFormData({
+                                      ...formData,
+                                      subtaskProgress: {
+                                        ...formData.subtaskProgress,
+                                        [subtask.id]: newProgress,
+                                      },
+                                    });
+                                  }}
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <span className="muted">{subtask.unit}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>打卡心得（选填）</label>
@@ -1076,6 +1204,111 @@ function Checkins() {
         .quick-reason-btn:hover {
           background: rgba(108, 92, 231, 0.2);
           color: var(--text-color);
+        }
+
+        .subtask-checkin-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .subtask-checkin-item {
+          padding: 12px 14px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+          transition: all 0.2s;
+        }
+
+        .subtask-checkin-item.selected {
+          background: rgba(108, 92, 231, 0.1);
+          border-color: rgba(108, 92, 231, 0.3);
+        }
+
+        .subtask-checkin-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .subtask-checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          flex: 1;
+          min-width: 0;
+        }
+
+        .subtask-checkbox-label input[type='checkbox'] {
+          width: 16px;
+          height: 16px;
+          accent-color: var(--primary);
+          flex-shrink: 0;
+        }
+
+        .subtask-checkin-icon {
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .subtask-checkin-title {
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .milestone-mini-badge {
+          font-size: 12px;
+        }
+
+        .subtask-checkin-progress {
+          font-size: 12px;
+          flex-shrink: 0;
+        }
+
+        .subtask-progress-adjuster {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          font-size: 13px;
+        }
+
+        .progress-adjuster-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .adjuster-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          background: rgba(255, 255, 255, 0.1);
+          color: var(--text-color);
+          font-size: 16px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s;
+        }
+
+        .adjuster-btn:hover {
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        .adjuster-value {
+          min-width: 24px;
+          text-align: center;
+          font-weight: 600;
+          font-size: 14px;
         }
 
         .modal-overlay {

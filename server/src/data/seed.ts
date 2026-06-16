@@ -416,3 +416,119 @@ export const mockTimeline: TimelineEvent[] = [
     pactId: 'pact-1',
   },
 ];
+
+export interface Subtask {
+  id: string;
+  pactId: string;
+  title: string;
+  description: string;
+  order: number;
+  status: 'pending' | 'in_progress' | 'completed';
+  targetCount: number;
+  currentCount: number;
+  unit: string;
+  deadline?: string;
+  createdAt: string;
+  completedAt?: string;
+  isMilestone: boolean;
+  milestoneReward?: string;
+  color?: string;
+  icon?: string;
+}
+
+export const mockSubtasks: Subtask[] = [
+  {
+    id: 'subtask-1',
+    pactId: 'pact-4',
+    title: '读完10本经典文学',
+    description: '一起阅读经典文学作品，感受文字的力量',
+    order: 0,
+    status: 'completed',
+    targetCount: 10,
+    currentCount: 10,
+    unit: '本',
+    createdAt: '2024-03-01T00:00:00Z',
+    completedAt: '2024-04-15T10:00:00Z',
+    isMilestone: true,
+    milestoneReward: '一起去书店买一本喜欢的书',
+    color: '#3498db',
+    icon: '📖',
+  },
+  {
+    id: 'subtask-2',
+    pactId: 'pact-4',
+    title: '读完20本治愈系小说',
+    description: '温暖治愈的故事，让心变得柔软',
+    order: 1,
+    status: 'in_progress',
+    targetCount: 20,
+    currentCount: 13,
+    unit: '本',
+    createdAt: '2024-03-01T00:00:00Z',
+    isMilestone: false,
+    color: '#3498db',
+    icon: '📚',
+  },
+  {
+    id: 'subtask-3',
+    pactId: 'pact-4',
+    title: '读完30本成长励志书',
+    description: '一起成长，成为更好的自己',
+    order: 2,
+    status: 'pending',
+    targetCount: 30,
+    currentCount: 0,
+    unit: '本',
+    createdAt: '2024-03-01T00:00:00Z',
+    isMilestone: true,
+    milestoneReward: '完成100本书目标的庆祝旅行',
+    color: '#3498db',
+    icon: '🎯',
+  },
+  {
+    id: 'subtask-4',
+    pactId: 'pact-4',
+    title: '读完40本科普读物',
+    description: '探索未知的世界，一起涨知识',
+    order: 3,
+    status: 'pending',
+    targetCount: 40,
+    currentCount: 0,
+    unit: '本',
+    createdAt: '2024-03-01T00:00:00Z',
+    isMilestone: false,
+    color: '#3498db',
+    icon: '🔬',
+  },
+  {
+    id: 'subtask-5',
+    pactId: 'pact-2',
+    title: '学会10道家常菜',
+    description: '从基础开始，掌握家常菜的精髓',
+    order: 0,
+    status: 'in_progress',
+    targetCount: 10,
+    currentCount: 7,
+    unit: '道',
+    createdAt: '2024-02-01T00:00:00Z',
+    isMilestone: false,
+    color: '#e74c3c',
+    icon: '🍳',
+  },
+  {
+    id: 'subtask-6',
+    pactId: 'pact-2',
+    title: '挑战5道硬菜',
+    description: '挑战高难度菜品，展示厨艺',
+    order: 1,
+    status: 'pending',
+    targetCount: 5,
+    currentCount: 0,
+    unit: '道',
+    createdAt: '2024-02-01T00:00:00Z',
+    isMilestone: true,
+    milestoneReward: '一起去高级餐厅享用一顿',
+    color: '#e74c3c',
+    icon: '👨‍🍳',
+  },
+];

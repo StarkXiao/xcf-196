@@ -7,6 +7,7 @@ import { mockCheckins } from '../data/seed';
 import { PactsService } from '../pacts/pacts.service';
 import { TimelineService } from '../timeline/timeline.service';
 import { RemindersService } from '../reminders/reminders.service';
+import { SubtasksService } from '../subtasks/subtasks.service';
 
 @Injectable()
 export class CheckinsService {
@@ -17,6 +18,8 @@ export class CheckinsService {
     private readonly pactsService: PactsService,
     private readonly timelineService: TimelineService,
     private readonly remindersService: RemindersService,
+    @Inject(forwardRef(() => SubtasksService))
+    private readonly subtasksService: SubtasksService,
   ) {}
 
   findAll(pactId?: string, startDate?: string, endDate?: string): Checkin[] {
@@ -78,9 +81,12 @@ export class CheckinsService {
       photoUrl: createCheckinDto.photoUrl,
       isMakeup: false,
       createdAt: new Date().toISOString(),
+      subtaskIds: createCheckinDto.subtaskIds,
+      subtaskProgress: createCheckinDto.subtaskProgress,
     };
     this.checkins.push(newCheckin);
     this.updatePactStats(createCheckinDto.pactId);
+    this.updateSubtaskProgress(newCheckin);
     this.createTimelineEvent(newCheckin, pact.title);
     return newCheckin;
   }
@@ -134,10 +140,13 @@ export class CheckinsService {
       makeupReason: dto.makeupReason,
       makeupAt: now,
       createdAt: now,
+      subtaskIds: (dto as any).subtaskIds,
+      subtaskProgress: (dto as any).subtaskProgress,
     };
     this.checkins.push(makeupCheckin);
 
     this.updatePactStats(dto.pactId);
+    this.updateSubtaskProgress(makeupCheckin);
     this.createTimelineEvent(makeupCheckin, pact.title);
     this.createMakeupReminder(pact.title, dto.date, diffDays);
 
@@ -199,8 +208,35 @@ export class CheckinsService {
 
   remove(id: string): void {
     const checkin = this.findOne(id);
+    this.rollbackSubtaskProgress(checkin);
     this.checkins = this.checkins.filter(c => c.id !== id);
     this.updatePactStats(checkin.pactId);
+  }
+
+  private updateSubtaskProgress(checkin: Checkin): void {
+    try {
+      if (!checkin.subtaskIds || checkin.subtaskIds.length === 0) return;
+
+      checkin.subtaskIds.forEach(subtaskId => {
+        const progressAmount = checkin.subtaskProgress?.[subtaskId] || 1;
+        this.subtasksService.incrementProgress(subtaskId, progressAmount);
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private rollbackSubtaskProgress(checkin: Checkin): void {
+    try {
+      if (!checkin.subtaskIds || checkin.subtaskIds.length === 0) return;
+
+      checkin.subtaskIds.forEach(subtaskId => {
+        const progressAmount = checkin.subtaskProgress?.[subtaskId] || 1;
+        this.subtasksService.decrementProgress(subtaskId, progressAmount);
+      });
+    } catch (e) {
+      // ignore
+    }
   }
 
   private updatePactStats(pactId: string): void {

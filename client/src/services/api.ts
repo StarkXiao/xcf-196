@@ -12,6 +12,8 @@ import type {
   CheckinStats,
   MissedCheckinPact,
   MissedDate,
+  Subtask,
+  SubtaskStats,
 } from '../types';
 
 const api = axios.create({
@@ -98,4 +100,23 @@ export const usersApi = {
     api.patch<User>('/users/atmosphere', { type }).then(res => res.data),
   getOriginalTheme: () =>
     api.get<{ theme: string }>('/users/original-theme').then(res => res.data),
+};
+
+export const subtasksApi = {
+  findAll: (pactId?: string, status?: string) =>
+    api.get<Subtask[]>('/subtasks', { params: { pactId, status } }).then(res => res.data),
+  findOne: (id: string) => api.get<Subtask>(`/subtasks/${id}`).then(res => res.data),
+  create: (data: Partial<Subtask>) =>
+    api.post<Subtask>('/subtasks', data).then(res => res.data),
+  update: (id: string, data: Partial<Subtask>) =>
+    api.patch<Subtask>(`/subtasks/${id}`, data).then(res => res.data),
+  remove: (id: string) => api.delete(`/subtasks/${id}`),
+  getStats: (pactId: string) =>
+    api.get<SubtaskStats>(`/subtasks/stats/${pactId}`).then(res => res.data),
+  incrementProgress: (id: string, amount?: number) =>
+    api.post<Subtask>(`/subtasks/${id}/increment`, { amount }).then(res => res.data),
+  decrementProgress: (id: string, amount?: number) =>
+    api.post<Subtask>(`/subtasks/${id}/decrement`, { amount }).then(res => res.data),
+  reorder: (pactId: string, subtaskIds: string[]) =>
+    api.post<Subtask[]>(`/subtasks/reorder/${pactId}`, { subtaskIds }).then(res => res.data),
 };
