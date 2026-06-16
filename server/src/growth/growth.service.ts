@@ -41,8 +41,7 @@ export class GrowthService {
     const allPacts = this.pactsService.findAll();
     const maxStreak = Math.max(0, ...allPacts.map(p => p.longestStreak));
     const completedPacts = allPacts.filter(p => p.status === 'completed').length;
-    const anniversary = this.usersService.getAnniversaryInfo();
-    const yearsTogether = Math.floor(anniversary.daysTogether / 365);
+    const anniversaryRecordsCount = this.records.filter(r => r.sourceType === 'anniversary').length;
 
     if (allCheckins.length >= 1) this.unlockedBadgeIds.add('first_checkin');
     if (maxStreak >= 7) this.unlockedBadgeIds.add('streak_7');
@@ -51,7 +50,7 @@ export class GrowthService {
     if (completedPacts >= 5) this.unlockedBadgeIds.add('pacts_5');
     if (completedPacts >= 10) this.unlockedBadgeIds.add('pacts_10');
     if (allCheckins.length >= 50) this.unlockedBadgeIds.add('checkins_50');
-    if (yearsTogether >= 3) this.unlockedBadgeIds.add('anniversary_3');
+    if (anniversaryRecordsCount >= 3) this.unlockedBadgeIds.add('anniversary_3');
     if (totalPoints >= 500) this.unlockedBadgeIds.add('points_500');
     if (totalPoints >= 2000) this.unlockedBadgeIds.add('points_2000');
   }
@@ -217,18 +216,29 @@ export class GrowthService {
     );
   }
 
-  handleAnniversaryInteraction(anniversaryInfo: any): GrowthRecord {
+  handleAnniversaryInteraction(anniversaryNumber: number, anniversaryDate: string, isFirstTime: boolean = false): GrowthRecord {
     const user = this.usersService.findOne();
     const anniversary = new Date(user.anniversary);
     const now = new Date();
-    const yearsTogether = now.getFullYear() - anniversary.getFullYear();
+
+    const existingRecord = this.records.find(
+      r => r.sourceType === 'anniversary' && r.createdAt.split('T')[0] === anniversaryDate
+    );
+    if (existingRecord) {
+      return existingRecord;
+    }
+
+    const points = isFirstTime ? POINT_RULES.ANNIVERSARY_DAY + POINT_RULES.ANNIVERSARY_INTERACTION : POINT_RULES.ANNIVERSARY_DAY;
+    const reason = anniversaryNumber === 0
+      ? '今天是我们在一起的第一天！💑'
+      : `在一起${anniversaryNumber}周年纪念日互动！💕`;
 
     return this.addRecord(
-      POINT_RULES.ANNIVERSARY_DAY,
-      `在一起${yearsTogether}周年纪念日互动！`,
+      points,
+      reason,
       'anniversary',
       undefined,
-      { yearsTogether, anniversaryDate: user.anniversary },
+      { anniversaryNumber, anniversaryDate, isFirstTime, anniversaryType: 'main' },
     );
   }
 
@@ -250,8 +260,7 @@ export class GrowthService {
     const allPacts = this.pactsService.findAll();
     const maxStreak = Math.max(0, ...allPacts.map(p => p.longestStreak));
     const completedPacts = allPacts.filter(p => p.status === 'completed').length;
-    const anniversary = this.usersService.getAnniversaryInfo();
-    const yearsTogether = Math.floor(anniversary.daysTogether / 365);
+    const anniversaryRecordsCount = this.records.filter(r => r.sourceType === 'anniversary').length;
     const totalPoints = this.calculateTotalPoints();
 
     const progressMap: Record<string, { progress: number; target: number }> = {
@@ -262,7 +271,7 @@ export class GrowthService {
       pacts_5: { progress: Math.min(completedPacts, 5), target: 5 },
       pacts_10: { progress: Math.min(completedPacts, 10), target: 10 },
       checkins_50: { progress: Math.min(allCheckins.length, 50), target: 50 },
-      anniversary_3: { progress: Math.min(yearsTogether, 3), target: 3 },
+      anniversary_3: { progress: Math.min(anniversaryRecordsCount, 3), target: 3 },
       points_500: { progress: Math.min(totalPoints, 500), target: 500 },
       points_2000: { progress: Math.min(totalPoints, 2000), target: 2000 },
     };
@@ -284,8 +293,7 @@ export class GrowthService {
     const allPacts = this.pactsService.findAll();
     const maxStreak = Math.max(0, ...allPacts.map(p => p.longestStreak));
     const completedPacts = allPacts.filter(p => p.status === 'completed').length;
-    const anniversary = this.usersService.getAnniversaryInfo();
-    const yearsTogether = Math.floor(anniversary.daysTogether / 365);
+    const anniversaryRecordsCount = this.records.filter(r => r.sourceType === 'anniversary').length;
     const totalPoints = this.calculateTotalPoints();
 
     const checks: Array<{ id: string; condition: boolean }> = [
@@ -296,7 +304,7 @@ export class GrowthService {
       { id: 'pacts_5', condition: completedPacts >= 5 },
       { id: 'pacts_10', condition: completedPacts >= 10 },
       { id: 'checkins_50', condition: allCheckins.length >= 50 },
-      { id: 'anniversary_3', condition: yearsTogether >= 3 },
+      { id: 'anniversary_3', condition: anniversaryRecordsCount >= 3 },
       { id: 'points_500', condition: totalPoints >= 500 },
       { id: 'points_2000', condition: totalPoints >= 2000 },
     ];

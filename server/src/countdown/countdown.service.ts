@@ -2,10 +2,13 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PactsService } from '../pacts/pacts.service';
 import { UsersService } from '../users/users.service';
 import { RemindersService } from '../reminders/reminders.service';
+import { GrowthService } from '../growth/growth.service';
 import { CountdownItem, AtmosphereStatus } from './entities/countdown.entity';
 
 @Injectable()
 export class CountdownService {
+  private triggeredAnniversaryYears: Set<number> = new Set();
+
   constructor(
     @Inject(forwardRef(() => PactsService))
     private readonly pactsService: PactsService,
@@ -13,6 +16,8 @@ export class CountdownService {
     private readonly usersService: UsersService,
     @Inject(forwardRef(() => RemindersService))
     private readonly remindersService: RemindersService,
+    @Inject(forwardRef(() => GrowthService))
+    private readonly growthService: GrowthService,
   ) {}
 
   findAll(): CountdownItem[] {
@@ -35,7 +40,7 @@ export class CountdownService {
 
     const yearsTogether = now.getFullYear() - anniversaryDate.getFullYear();
 
-    items.push({
+    const anniversaryItem: CountdownItem = {
       id: 'countdown-anniversary',
       title: `${yearsTogether + 1}周年纪念日`,
       targetDate: nextAnniv.toISOString().split('T')[0],
@@ -49,7 +54,28 @@ export class CountdownService {
       isNear: annivDays <= 7 && annivDays > 0,
       atmosphere: annivDays <= 7 ? 'romantic' : 'none',
       description: `在一起${yearsTogether}年的纪念日即将到来`,
-    });
+    };
+
+    items.push(anniversaryItem);
+
+    if (anniversaryItem.isToday) {
+      const currentYear = now.getFullYear();
+      const anniversaryYear = now.getFullYear() - yearsTogether + (now < nextAnniv ? 0 : 1);
+      if (!this.triggeredAnniversaryYears.has(currentYear)) {
+        this.triggeredAnniversaryYears.add(currentYear);
+        try {
+          const isFirstTime = nextAnniv.getFullYear() === anniversaryDate.getFullYear();
+          const anniversaryNumber = nextAnniv.getFullYear() - anniversaryDate.getFullYear();
+          this.growthService.handleAnniversaryInteraction(
+            anniversaryNumber,
+            nextAnniv.toISOString().split('T')[0],
+            isFirstTime
+          );
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
 
     const pacts = this.pactsService.findAll('active');
     const specialPacts = pacts.filter(p => p.category === 'special');

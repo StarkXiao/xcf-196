@@ -406,6 +406,12 @@ export const mockTimeline: TimelineEvent[] = [
     title: '我们在一起了',
     description: '在漫天星光下，我们许下了第一个约定',
     icon: '💖',
+    metadata: {
+      growthPoints: 80,
+      growthRecordId: 'growth-16',
+      anniversaryNumber: 0,
+      isFirstTime: true,
+    },
   },
   {
     id: 'event-2',
@@ -415,14 +421,23 @@ export const mockTimeline: TimelineEvent[] = [
     description: '新年第一天，我们开始了第一个小约定',
     icon: '🌙',
     pactId: 'pact-1',
+    metadata: {
+      growthPoints: 20,
+      growthRecordId: 'growth-11',
+    },
   },
   {
     id: 'event-3',
     date: '2024-02-14',
-    type: 'milestone',
+    type: 'anniversary',
     title: '在一起一周年',
     description: '365天的陪伴，每一天都很珍贵',
     icon: '🎂',
+    metadata: {
+      growthPoints: 50,
+      growthRecordId: 'growth-15',
+      anniversaryNumber: 1,
+    },
   },
   {
     id: 'event-4',
@@ -432,6 +447,10 @@ export const mockTimeline: TimelineEvent[] = [
     description: '希望我们能一起在书海里遨游',
     icon: '📚',
     pactId: 'pact-4',
+    metadata: {
+      growthPoints: 20,
+      growthRecordId: 'growth-14',
+    },
   },
   {
     id: 'event-5',
@@ -441,6 +460,10 @@ export const mockTimeline: TimelineEvent[] = [
     description: '在这个特别的日子，我们完成了第100次打卡',
     icon: '💕',
     pactId: 'pact-3',
+    metadata: {
+      growthPoints: 10,
+      growthRecordId: 'growth-6',
+    },
   },
   {
     id: 'event-6',
@@ -450,6 +473,27 @@ export const mockTimeline: TimelineEvent[] = [
     description: '"每天说晚安" 已经坚持了30天啦！',
     icon: '🏆',
     pactId: 'pact-1',
+    metadata: {
+      growthPoints: 100,
+      growthRecordId: 'growth-10',
+      badgeId: 'streak_30',
+      badgeName: '月度达人',
+      isBadgeUnlock: true,
+      color: '#e74c3c',
+    },
+  },
+  {
+    id: 'event-7',
+    date: '2025-02-14',
+    type: 'anniversary',
+    title: '在一起两周年',
+    description: '730天的陪伴，爱与时光一同成长',
+    icon: '💍',
+    metadata: {
+      growthPoints: 50,
+      growthRecordId: 'growth-17',
+      anniversaryNumber: 2,
+    },
   },
 ];
 
@@ -612,10 +656,26 @@ export const mockGrowthRecords: GrowthRecord[] = [
   {
     id: 'growth-15',
     points: 50,
-    reason: '在一起1周年纪念日互动！',
+    reason: '在一起1周年纪念日互动！💕',
     sourceType: 'anniversary',
     createdAt: '2024-02-14T09:00:00Z',
-    metadata: { yearsTogether: 1 },
+    metadata: { anniversaryNumber: 1, anniversaryDate: '2024-02-14', isFirstTime: false, anniversaryType: 'main' },
+  },
+  {
+    id: 'growth-16',
+    points: 80,
+    reason: '今天是我们在一起的第一天！💑',
+    sourceType: 'anniversary',
+    createdAt: '2023-02-14T09:00:00Z',
+    metadata: { anniversaryNumber: 0, anniversaryDate: '2023-02-14', isFirstTime: true, anniversaryType: 'main' },
+  },
+  {
+    id: 'growth-17',
+    points: 50,
+    reason: '在一起2周年纪念日互动！💕',
+    sourceType: 'anniversary',
+    createdAt: '2025-02-14T09:00:00Z',
+    metadata: { anniversaryNumber: 2, anniversaryDate: '2025-02-14', isFirstTime: false, anniversaryType: 'main' },
   },
 ];
 
