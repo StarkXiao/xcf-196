@@ -9,6 +9,7 @@ const navItems = [
   { path: '/checkins', label: '打卡', icon: '📝' },
   { path: '/timeline', label: '时间线', icon: '🕐' },
   { path: '/reminders', label: '提醒', icon: '🔔' },
+  { path: '/monthly-review', label: '月度回顾', icon: '📊' },
   { path: '/settings', label: '设置', icon: '⚙️' },
 ];
 

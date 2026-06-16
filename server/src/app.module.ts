@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { CountdownModule } from './countdown/countdown.module';
 import { SubtasksModule } from './subtasks/subtasks.module';
 import { GrowthModule } from './growth/growth.module';
+import { MonthlyReviewModule } from './monthly-review/monthly-review.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { GrowthModule } from './growth/growth.module';
     CountdownModule,
     SubtasksModule,
     GrowthModule,
+    MonthlyReviewModule,
   ],
 })
 export class AppModule {}

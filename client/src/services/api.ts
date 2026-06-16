@@ -18,6 +18,7 @@ import type {
   GrowthStats,
   GrowthLevel,
   Badge,
+  MonthlyReviewData,
 } from '../types';
 
 const api = axios.create({
@@ -160,4 +161,9 @@ export const growthApi = {
     api.post<GrowthRecord>('/growth/records', data).then(res => res.data),
   celebrateAnniversary: (data?: { anniversaryNumber?: number; anniversaryDate?: string }) =>
     api.post<GrowthRecord>('/growth/anniversary-interaction', data || {}).then(res => res.data),
+};
+
+export const monthlyReviewApi = {
+  getMonthlyReview: (year: number, month: number) =>
+    api.get<MonthlyReviewData>('/monthly-review', { params: { year, month } }).then(res => res.data),
 };

@@ -6,6 +6,7 @@ import Checkins from './pages/Checkins';
 import Timeline from './pages/Timeline';
 import Reminders from './pages/Reminders';
 import Settings from './pages/Settings';
+import MonthlyReview from './pages/MonthlyReview';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="checkins" element={<Checkins />} />
         <Route path="timeline" element={<Timeline />} />
         <Route path="reminders" element={<Reminders />} />
+        <Route path="monthly-review" element={<MonthlyReview />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
