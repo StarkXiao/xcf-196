@@ -6,11 +6,13 @@ export interface User {
   partnerAvatar: string;
   anniversary: string;
   bio: string;
-  theme: 'moonlight' | 'sunset' | 'ocean' | 'forest';
+  theme: 'moonlight' | 'sunset' | 'ocean' | 'forest' | 'romantic' | 'festive';
+  originalTheme?: 'moonlight' | 'sunset' | 'ocean' | 'forest';
   notifications: {
     dailyReminder: boolean;
     pactReminder: boolean;
     checkinReminder: boolean;
+    anniversaryReminder: boolean;
   };
 }
 
@@ -87,6 +89,7 @@ export const mockUser: User = {
     dailyReminder: true,
     pactReminder: true,
     checkinReminder: true,
+    anniversaryReminder: true,
   },
 };
 
@@ -321,7 +324,7 @@ export const mockReminders: Reminder[] = [
     title: '周年纪念日',
     description: '我们在一起的纪念日，准备惊喜吧！',
     type: 'anniversary',
-    date: '2024-02-14',
+    date: '2023-02-14',
     time: '09:00',
     repeat: 'yearly',
     isActive: true,
@@ -345,6 +348,16 @@ export const mockReminders: Reminder[] = [
     date: '',
     time: '18:00',
     repeat: 'monthly',
+    isActive: true,
+  },
+  {
+    id: 'reminder-5',
+    title: '纪念日倒计时提醒',
+    description: '纪念日即将到来，提前准备一份惊喜吧',
+    type: 'anniversary',
+    date: '',
+    time: '08:00',
+    repeat: 'daily',
     isActive: true,
   },
 ];

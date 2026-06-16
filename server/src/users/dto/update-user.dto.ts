@@ -25,9 +25,13 @@ export class UpdateUserDto {
   @IsOptional()
   bio?: string;
 
-  @IsEnum(['moonlight', 'sunset', 'ocean', 'forest'])
+  @IsEnum(['moonlight', 'sunset', 'ocean', 'forest', 'romantic', 'festive'])
   @IsOptional()
-  theme?: 'moonlight' | 'sunset' | 'ocean' | 'forest';
+  theme?: 'moonlight' | 'sunset' | 'ocean' | 'forest' | 'romantic' | 'festive';
+
+  @IsString()
+  @IsOptional()
+  originalTheme?: 'moonlight' | 'sunset' | 'ocean' | 'forest';
 
   @IsObject()
   @IsOptional()
@@ -35,5 +39,6 @@ export class UpdateUserDto {
     dailyReminder?: boolean;
     pactReminder?: boolean;
     checkinReminder?: boolean;
+    anniversaryReminder?: boolean;
   };
 }

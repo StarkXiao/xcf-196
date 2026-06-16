@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { timelineApi } from '../services/api';
-import type { TimelineEvent } from '../types';
+import { timelineApi, countdownApi } from '../services/api';
+import type { TimelineEvent, CountdownItem } from '../types';
 
 const typeLabels: Record<string, string> = {
   pact_created: '新约定',
@@ -14,6 +14,7 @@ const typeLabels: Record<string, string> = {
 function Timeline() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
 
   useEffect(() => {
     loadTimeline();
@@ -21,10 +22,14 @@ function Timeline() {
 
   const loadTimeline = async () => {
     try {
-      const data = await timelineApi.findAll(
-        typeFilter === 'all' ? undefined : typeFilter,
-      );
+      const [data, countdownData] = await Promise.all([
+        timelineApi.findAll(
+          typeFilter === 'all' ? undefined : typeFilter,
+        ),
+        countdownApi.findAll(),
+      ]);
       setEvents(data);
+      setCountdowns(countdownData);
     } catch (error) {
       console.error('加载时间线失败', error);
     }
@@ -73,6 +78,28 @@ function Timeline() {
         </div>
       </div>
 
+      {countdowns.filter(c => c.isNear || c.isToday).length > 0 && (
+        <div className="upcoming-events-banner">
+          <div className="banner-title">📅 即将到来的重要日子</div>
+          <div className="banner-items">
+            {countdowns.filter(c => c.isNear || c.isToday).map(cd => (
+              <div key={cd.id} className={`banner-item ${cd.isToday ? 'banner-today' : ''}`}>
+                <span className="banner-icon">{cd.icon}</span>
+                <span className="banner-text">{cd.title}</span>
+                <span className="banner-countdown" style={{ color: cd.isToday ? '#e91e63' : cd.color }}>
+                  {cd.isToday ? '🎉 今天！' : `${cd.daysLeft}天`}
+                </span>
+                {cd.atmosphere && cd.atmosphere !== 'none' && (
+                  <span className="banner-atmosphere">
+                    {cd.atmosphere === 'romantic' ? '💕' : '🎊'}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="timeline-container">
         {groupByYear(events).map(([year, yearEvents]) => (
           <div key={year} className="timeline-year">
@@ -91,9 +118,14 @@ function Timeline() {
                   <div className="timeline-content card">
                     <div className="timeline-header">
                       <h3 className="timeline-title">{event.title}</h3>
-                      <span className={`timeline-type ${event.type === 'makeup_checkin' ? 'type-makeup' : ''}`}>{typeLabels[event.type]}</span>
+                      <span className={`timeline-type ${event.type === 'makeup_checkin' ? 'type-makeup' : ''} ${event.type === 'anniversary' ? 'type-anniversary' : ''}`}>{typeLabels[event.type]}</span>
                     </div>
                     <p className="timeline-desc muted">{event.description}</p>
+                    {event.metadata?.atmosphere && event.metadata.atmosphere !== 'none' && (
+                      <div className="timeline-atmosphere-tag">
+                        {event.metadata.atmosphere === 'romantic' ? '💕 浪漫氛围' : '🎊 喜庆氛围'}
+                      </div>
+                    )}
                     <div className="timeline-date">
                       <span className="muted">{event.date}</span>
                     </div>
@@ -132,7 +164,74 @@ function Timeline() {
         }
 
         .filter-tabs {
+          margin-bottom: 24px;
+        }
+
+        .upcoming-events-banner {
           margin-bottom: 32px;
+          padding: 20px 24px;
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(253, 121, 168, 0.1));
+          border-radius: 16px;
+          border: 1px solid rgba(108, 92, 231, 0.2);
+        }
+
+        .banner-title {
+          font-size: 16px;
+          font-weight: 600;
+          margin-bottom: 14px;
+        }
+
+        .banner-items {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .banner-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+          font-size: 14px;
+        }
+
+        .banner-item.banner-today {
+          background: rgba(233, 30, 99, 0.1);
+          border: 1px solid rgba(233, 30, 99, 0.2);
+        }
+
+        .banner-icon {
+          font-size: 18px;
+        }
+
+        .banner-text {
+          flex: 1;
+          font-weight: 500;
+        }
+
+        .banner-countdown {
+          font-weight: 600;
+        }
+
+        .banner-atmosphere {
+          font-size: 16px;
+        }
+
+        .timeline-type.type-anniversary {
+          background: rgba(233, 30, 99, 0.2);
+          color: #e91e63;
+        }
+
+        .timeline-atmosphere-tag {
+          font-size: 13px;
+          color: var(--accent);
+          margin-bottom: 8px;
+          padding: 4px 10px;
+          background: rgba(253, 121, 168, 0.1);
+          border-radius: 12px;
+          display: inline-block;
         }
 
         .tab-group {

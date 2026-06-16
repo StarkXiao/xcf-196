@@ -1,4 +1,4 @@
-import { Controller, Get, Body, Patch } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -19,5 +19,15 @@ export class UsersController {
   @Get('anniversary')
   getAnniversary() {
     return this.usersService.getAnniversaryInfo();
+  }
+
+  @Patch('atmosphere')
+  applyAtmosphere(@Body() body: { type: 'romantic' | 'festive' | 'none' }) {
+    return this.usersService.applyAtmosphere(body.type);
+  }
+
+  @Get('original-theme')
+  getOriginalTheme() {
+    return { theme: this.usersService.getOriginalTheme() };
   }
 }

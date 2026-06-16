@@ -11,6 +11,13 @@ export class RemindersController {
     return this.remindersService.findAll(active);
   }
 
+  @Get('upcoming-anniversary')
+  getUpcomingAnniversary(@Query('days') days?: string) {
+    return this.remindersService.getUpcomingAnniversaryReminders(
+      days ? parseInt(days, 10) : 7,
+    );
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.remindersService.findOne(id);

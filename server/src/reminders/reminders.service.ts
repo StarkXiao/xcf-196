@@ -71,4 +71,39 @@ export class RemindersService {
     const reminder = this.findOne(id);
     return this.update(id, { isActive: !reminder.isActive });
   }
+
+  getUpcomingAnniversaryReminders(days: number = 7): Reminder[] {
+    const now = new Date();
+    const activeReminders = this.reminders.filter(
+      r => r.isActive && (r.type === 'anniversary' || r.type === 'pact') && r.repeat === 'yearly',
+    );
+
+    return activeReminders.filter(r => {
+      if (!r.date) return false;
+      const reminderDate = new Date(r.date);
+      let nextDate = new Date(now.getFullYear(), reminderDate.getMonth(), reminderDate.getDate());
+      if (nextDate < now) {
+        nextDate = new Date(now.getFullYear() + 1, reminderDate.getMonth(), reminderDate.getDate());
+      }
+      const diff = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return diff <= days && diff >= 0;
+    });
+  }
+
+  ensureAnniversaryReminder(title: string, date: string, description: string): Reminder {
+    const existing = this.reminders.find(
+      r => r.type === 'anniversary' && r.date === date && r.title === title,
+    );
+    if (existing) return existing;
+
+    return this.create({
+      title,
+      description,
+      type: 'anniversary',
+      date,
+      time: '09:00',
+      repeat: 'yearly',
+      isActive: true,
+    });
+  }
 }

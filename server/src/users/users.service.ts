@@ -41,4 +41,34 @@ export class UsersService {
       anniversaryDate: this.user.anniversary,
     };
   }
+
+  applyAtmosphere(atmosphereType: 'romantic' | 'festive' | 'none'): User {
+    if (atmosphereType !== 'none') {
+      const baseThemes: Array<'moonlight' | 'sunset' | 'ocean' | 'forest'> = [
+        'moonlight', 'sunset', 'ocean', 'forest',
+      ];
+      if (!this.user.originalTheme && baseThemes.includes(this.user.theme as any)) {
+        this.user = {
+          ...this.user,
+          originalTheme: this.user.theme as any,
+          theme: atmosphereType,
+        };
+      } else if (this.user.originalTheme) {
+        this.user = { ...this.user, theme: atmosphereType };
+      }
+    } else {
+      if (this.user.originalTheme) {
+        this.user = {
+          ...this.user,
+          theme: this.user.originalTheme,
+          originalTheme: undefined,
+        };
+      }
+    }
+    return this.user;
+  }
+
+  getOriginalTheme(): string {
+    return this.user.originalTheme || this.user.theme;
+  }
 }

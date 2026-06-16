@@ -6,6 +6,8 @@ import type {
   TimelineEvent,
   User,
   AnniversaryInfo,
+  CountdownItem,
+  AtmosphereStatus,
   PactStats,
   CheckinStats,
   MissedCheckinPact,
@@ -59,6 +61,8 @@ export const timelineApi = {
   findOne: (id: string) => api.get<TimelineEvent>(`/timeline/${id}`).then(res => res.data),
   create: (data: Partial<TimelineEvent>) =>
     api.post<TimelineEvent>('/timeline', data).then(res => res.data),
+  getUpcomingEvents: () =>
+    api.get<TimelineEvent[]>('/timeline/upcoming-events').then(res => res.data),
 };
 
 export const remindersApi = {
@@ -72,6 +76,17 @@ export const remindersApi = {
   toggle: (id: string) =>
     api.patch<Reminder>(`/reminders/${id}/toggle`).then(res => res.data),
   remove: (id: string) => api.delete(`/reminders/${id}`),
+  getUpcomingAnniversary: (days?: number) =>
+    api.get<Reminder[]>('/reminders/upcoming-anniversary', { params: { days } }).then(res => res.data),
+};
+
+export const countdownApi = {
+  findAll: () =>
+    api.get<CountdownItem[]>('/countdown').then(res => res.data),
+  getAtmosphere: () =>
+    api.get<AtmosphereStatus>('/countdown/atmosphere').then(res => res.data),
+  getUpcoming: (days?: number) =>
+    api.get<CountdownItem[]>('/countdown/upcoming', { params: { days } }).then(res => res.data),
 };
 
 export const usersApi = {
@@ -79,4 +94,8 @@ export const usersApi = {
   updateProfile: (data: Partial<User>) =>
     api.patch<User>('/users/profile', data).then(res => res.data),
   getAnniversary: () => api.get<AnniversaryInfo>('/users/anniversary').then(res => res.data),
+  applyAtmosphere: (type: 'romantic' | 'festive' | 'none') =>
+    api.patch<User>('/users/atmosphere', { type }).then(res => res.data),
+  getOriginalTheme: () =>
+    api.get<{ theme: string }>('/users/original-theme').then(res => res.data),
 };

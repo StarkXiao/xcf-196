@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { remindersApi, pactsApi } from '../services/api';
-import type { Reminder, Pact } from '../types';
+import { remindersApi, pactsApi, countdownApi } from '../services/api';
+import type { Reminder, Pact, CountdownItem } from '../types';
 
 const repeatLabels: Record<string, string> = {
   none: '不重复',
@@ -19,6 +19,7 @@ const typeLabels: Record<string, string> = {
 function Reminders() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [pacts, setPacts] = useState<Pact[]>([]);
+  const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<{
@@ -45,12 +46,14 @@ function Reminders() {
 
   const loadData = async () => {
     try {
-      const [remindersData, pactsData] = await Promise.all([
+      const [remindersData, pactsData, countdownData] = await Promise.all([
         remindersApi.findAll(filter === 'all' ? undefined : filter === 'active'),
         pactsApi.findAll('active'),
+        countdownApi.findAll(),
       ]);
       setReminders(remindersData);
       setPacts(pactsData);
+      setCountdowns(countdownData);
     } catch (error) {
       console.error('加载提醒失败', error);
     }
@@ -179,6 +182,25 @@ function Reminders() {
                   </div>
                 )}
               </div>
+
+              {reminder.type === 'anniversary' && (() => {
+                const nearCountdowns = countdowns.filter(c => c.type === 'anniversary' && c.isNear);
+                if (nearCountdowns.length === 0) return null;
+                return (
+                  <div className="reminder-countdown-hint">
+                    {nearCountdowns.map(cd => (
+                      <span key={cd.id} className="countdown-hint-item">
+                        ⏳ {cd.title} {cd.isToday ? '🎉 今天！' : `还有${cd.daysLeft}天`}
+                        {cd.atmosphere && cd.atmosphere !== 'none' && (
+                          <span className="countdown-hint-atmosphere">
+                            {cd.atmosphere === 'romantic' ? '💕 浪漫氛围已激活' : '🎊 喜庆氛围已激活'}
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
@@ -526,6 +548,30 @@ function Reminders() {
           align-items: center;
           gap: 6px;
           font-size: 13px;
+        }
+
+        .reminder-countdown-hint {
+          margin-top: 12px;
+          padding: 10px 14px;
+          background: rgba(108, 92, 231, 0.08);
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .countdown-hint-item {
+          font-size: 13px;
+          color: var(--primary);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .countdown-hint-atmosphere {
+          font-size: 12px;
+          color: var(--accent);
         }
 
         .empty-state.full {

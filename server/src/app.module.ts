@@ -4,6 +4,7 @@ import { CheckinsModule } from './checkins/checkins.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { UsersModule } from './users/users.module';
+import { CountdownModule } from './countdown/countdown.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { UsersModule } from './users/users.module';
     TimelineModule,
     RemindersModule,
     UsersModule,
+    CountdownModule,
   ],
 })
 export class AppModule {}

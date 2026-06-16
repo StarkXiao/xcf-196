@@ -6,10 +6,12 @@ export interface User {
   partnerAvatar: string;
   anniversary: string;
   bio: string;
-  theme: 'moonlight' | 'sunset' | 'ocean' | 'forest';
+  theme: 'moonlight' | 'sunset' | 'ocean' | 'forest' | 'romantic' | 'festive';
+  originalTheme?: 'moonlight' | 'sunset' | 'ocean' | 'forest';
   notifications: {
     dailyReminder: boolean;
     pactReminder: boolean;
     checkinReminder: boolean;
+    anniversaryReminder: boolean;
   };
 }

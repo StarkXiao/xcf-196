@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { pactsApi } from '../services/api';
-import type { Pact } from '../types';
+import { pactsApi, countdownApi } from '../services/api';
+import type { Pact, CountdownItem } from '../types';
 
 const categoryLabels: Record<string, string> = {
   daily: '每日约定',
@@ -36,6 +36,7 @@ function Pacts() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
   const [editingPact, setEditingPact] = useState<Pact | null>(null);
+  const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
@@ -62,11 +63,19 @@ function Pacts() {
     try {
       const status = filter === 'all' ? undefined : filter;
       const category = categoryFilter === 'all' ? undefined : categoryFilter;
-      const data = await pactsApi.findAll(status, category);
+      const [data, countdownData] = await Promise.all([
+        pactsApi.findAll(status, category),
+        countdownApi.findAll(),
+      ]);
       setPacts(data);
+      setCountdowns(countdownData);
     } catch (error) {
       console.error('加载约定失败', error);
     }
+  };
+
+  const getCountdownForPact = (pactId: string): CountdownItem | undefined => {
+    return countdowns.find(c => c.pactId === pactId);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -277,6 +286,23 @@ function Pacts() {
               <span className="muted">{categoryLabels[pact.category]}</span>
               <span className="muted">开始于 {pact.startDate}</span>
             </div>
+
+            {pact.category === 'special' && getCountdownForPact(pact.id) && (() => {
+              const cd = getCountdownForPact(pact.id)!;
+              return (
+                <div className="pact-countdown-tag">
+                  <span className="countdown-tag-icon">⏳</span>
+                  <span className="countdown-tag-text">
+                    {cd.isToday ? '🎉 今天！' : `还有 ${cd.daysLeft} 天`}
+                  </span>
+                  {cd.atmosphere && cd.atmosphere !== 'none' && (
+                    <span className="countdown-tag-atmosphere">
+                      {cd.atmosphere === 'romantic' ? '💕' : '🎊'}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ))}
 
@@ -560,6 +586,31 @@ function Pacts() {
           display: flex;
           justify-content: space-between;
           font-size: 12px;
+        }
+
+        .pact-countdown-tag {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 12px;
+          padding: 8px 12px;
+          background: rgba(108, 92, 231, 0.1);
+          border-radius: 8px;
+          font-size: 13px;
+        }
+
+        .countdown-tag-icon {
+          font-size: 14px;
+        }
+
+        .countdown-tag-text {
+          color: var(--primary);
+          font-weight: 500;
+        }
+
+        .countdown-tag-atmosphere {
+          margin-left: auto;
+          font-size: 14px;
         }
 
         .badge-pending_confirmation {

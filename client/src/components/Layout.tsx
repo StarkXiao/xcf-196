@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { usersApi } from '../services/api';
-import type { User, AnniversaryInfo } from '../types';
+import { useEffect, useState, useCallback } from 'react';
+import { usersApi, countdownApi } from '../services/api';
+import type { User, AnniversaryInfo, AtmosphereStatus } from '../types';
 
 const navItems = [
   { path: '/dashboard', label: '首页', icon: '🏠' },
@@ -15,6 +15,8 @@ const navItems = [
 function Layout() {
   const [user, setUser] = useState<User | null>(null);
   const [anniversary, setAnniversary] = useState<AnniversaryInfo | null>(null);
+  const [atmosphere, setAtmosphere] = useState<AtmosphereStatus | null>(null);
+  const [atmosphereDismissed, setAtmosphereDismissed] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -29,16 +31,41 @@ function Layout() {
 
   const loadUserData = async () => {
     try {
-      const [userData, anniversaryData] = await Promise.all([
+      const [userData, anniversaryData, atmosphereData] = await Promise.all([
         usersApi.getProfile(),
         usersApi.getAnniversary(),
+        countdownApi.getAtmosphere(),
       ]);
       setUser(userData);
       setAnniversary(anniversaryData);
+      setAtmosphere(atmosphereData);
     } catch (error) {
       console.error('加载用户数据失败', error);
     }
   };
+
+  const handleApplyAtmosphere = useCallback(async () => {
+    if (!atmosphere || atmosphere.type === 'none' || atmosphereDismissed) return;
+    try {
+      const updated = await usersApi.applyAtmosphere(atmosphere.type);
+      setUser(updated);
+    } catch (error) {
+      console.error('应用氛围失败', error);
+    }
+  }, [atmosphere, atmosphereDismissed]);
+
+  const handleDismissAtmosphere = useCallback(() => {
+    setAtmosphereDismissed(true);
+  }, []);
+
+  const handleRestoreTheme = useCallback(async () => {
+    try {
+      const updated = await usersApi.applyAtmosphere('none');
+      setUser(updated);
+    } catch (error) {
+      console.error('恢复主题失败', error);
+    }
+  }, []);
 
   return (
     <div className="app-layout">
@@ -55,7 +82,62 @@ function Layout() {
             }}
           />
         ))}
+        {atmosphere?.active && atmosphere.type === 'romantic' && (
+          Array.from({ length: 12 }).map((_, i) => (
+            <div
+              key={`heart-${i}`}
+              className="atmosphere-particle heart-particle"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${30 + Math.random() * 60}%`,
+                animationDelay: `${Math.random() * 4}s`,
+                animationDuration: `${3 + Math.random() * 3}s`,
+              }}
+            >
+              💕
+            </div>
+          ))
+        )}
+        {atmosphere?.active && atmosphere.type === 'festive' && (
+          Array.from({ length: 15 }).map((_, i) => (
+            <div
+              key={`sparkle-${i}`}
+              className="atmosphere-particle sparkle-particle"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${30 + Math.random() * 60}%`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${2 + Math.random() * 2}s`,
+              }}
+            >
+              {['✨', '🌟', '⭐', '🎉', '🎊'][i % 5]}
+            </div>
+          ))
+        )}
       </div>
+
+      {atmosphere?.active && !atmosphereDismissed && (
+        <div className={`atmosphere-banner ${atmosphere.type}`}>
+          <div className="atmosphere-banner-content">
+            <span className="atmosphere-banner-icon">
+              {atmosphere.type === 'romantic' ? '💕' : '🎊'}
+            </span>
+            <span className="atmosphere-banner-text">
+              {atmosphere.type === 'romantic'
+                ? `浪漫氛围：${atmosphere.source}${atmosphere.daysLeft === 0 ? '就是今天！' : `还有${atmosphere.daysLeft}天`}`
+                : `喜庆氛围：${atmosphere.source}${atmosphere.daysLeft === 0 ? '就是今天！' : `还有${atmosphere.daysLeft}天`}`}
+            </span>
+            <div className="atmosphere-banner-actions">
+              <button className="atmosphere-btn apply" onClick={handleApplyAtmosphere}>
+                切换氛围
+              </button>
+              <button className="atmosphere-btn dismiss" onClick={handleDismissAtmosphere}>
+                暂不切换
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <aside className="sidebar">
         <div className="sidebar-header">
@@ -215,6 +297,75 @@ function Layout() {
           margin-top: 12px;
           font-size: 13px;
           color: var(--accent);
+        }
+
+        .atmosphere-banner {
+          position: fixed;
+          top: 0;
+          left: 280px;
+          right: 0;
+          z-index: 100;
+          padding: 12px 24px;
+          backdrop-filter: blur(10px);
+        }
+
+        .atmosphere-banner.romantic {
+          background: linear-gradient(135deg, rgba(233, 30, 99, 0.2), rgba(244, 143, 177, 0.15));
+          border-bottom: 1px solid rgba(233, 30, 99, 0.3);
+        }
+
+        .atmosphere-banner.festive {
+          background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 204, 2, 0.15));
+          border-bottom: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .atmosphere-banner-content {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .atmosphere-banner-icon {
+          font-size: 24px;
+        }
+
+        .atmosphere-banner-text {
+          flex: 1;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .atmosphere-banner-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .atmosphere-btn {
+          padding: 6px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .atmosphere-btn.apply {
+          background: var(--primary);
+          color: white;
+        }
+
+        .atmosphere-btn.apply:hover {
+          opacity: 0.9;
+        }
+
+        .atmosphere-btn.dismiss {
+          background: rgba(255, 255, 255, 0.1);
+          color: var(--text-color);
+        }
+
+        .atmosphere-btn.dismiss:hover {
+          background: rgba(255, 255, 255, 0.15);
         }
 
         .nav-menu {

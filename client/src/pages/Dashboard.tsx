@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { pactsApi, checkinsApi, timelineApi, remindersApi } from '../services/api';
-import type { Pact, Checkin, TimelineEvent, Reminder, PactStats, CheckinStats } from '../types';
+import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi } from '../services/api';
+import type { Pact, Checkin, TimelineEvent, Reminder, PactStats, CheckinStats, CountdownItem } from '../types';
 
 function Dashboard() {
   const [pactStats, setPactStats] = useState<PactStats | null>(null);
@@ -10,6 +10,7 @@ function Dashboard() {
   const [recentCheckins, setRecentCheckins] = useState<Checkin[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -17,7 +18,7 @@ function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [stats, checkinStatsData, pacts, checkins, timelineData, remindersData] =
+      const [stats, checkinStatsData, pacts, checkins, timelineData, remindersData, countdownData] =
         await Promise.all([
           pactsApi.getStats(),
           checkinsApi.getStats(),
@@ -25,6 +26,7 @@ function Dashboard() {
           checkinsApi.findAll(undefined, undefined, undefined),
           timelineApi.findAll(undefined, 5),
           remindersApi.findAll(true),
+          countdownApi.findAll(),
         ]);
       setPactStats(stats);
       setCheckinStats(checkinStatsData);
@@ -32,6 +34,7 @@ function Dashboard() {
       setRecentCheckins(checkins.slice(0, 3));
       setTimeline(timelineData);
       setReminders(remindersData);
+      setCountdowns(countdownData);
     } catch (error) {
       console.error('加载仪表盘数据失败', error);
     }
@@ -46,6 +49,18 @@ function Dashboard() {
       grateful: '🥰',
     };
     return moods[mood] || '😊';
+  };
+
+  const getCountdownLabel = (item: CountdownItem) => {
+    if (item.isToday) return '🎉 就在今天！';
+    if (item.daysLeft === 1) return '明天就到了！';
+    return `还有 ${item.daysLeft} 天`;
+  };
+
+  const getCountdownColor = (item: CountdownItem) => {
+    if (item.isToday) return '#e91e63';
+    if (item.isNear) return '#ff9800';
+    return item.color;
   };
 
   return (
@@ -101,6 +116,74 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      {countdowns.length > 0 && (
+        <div className="countdown-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              <span className="section-icon">⏳</span>
+              倒计时
+            </h2>
+            <span className="section-subtitle muted">重要的日子，值得期待</span>
+          </div>
+          <div className="countdown-grid">
+            {countdowns.slice(0, 4).map(item => (
+              <div
+                key={item.id}
+                className={`countdown-card card ${item.isToday ? 'countdown-today' : ''} ${item.isNear ? 'countdown-near' : ''}`}
+              >
+                <div className="countdown-card-header">
+                  <div
+                    className="countdown-icon"
+                    style={{ backgroundColor: `${getCountdownColor(item)}20`, color: getCountdownColor(item) }}
+                  >
+                    {item.icon}
+                  </div>
+                  <div className="countdown-info">
+                    <h3 className="countdown-title">{item.title}</h3>
+                    <span className="countdown-type">
+                      {item.type === 'anniversary' ? '纪念日' : item.type === 'special_pact' ? '特别约定' : '自定义'}
+                    </span>
+                  </div>
+                </div>
+                <div className="countdown-timer">
+                  {item.isToday ? (
+                    <div className="countdown-today-text" style={{ color: '#e91e63' }}>
+                      🎉 就是今天！
+                    </div>
+                  ) : (
+                    <>
+                      <div className="countdown-time-block" style={{ color: getCountdownColor(item) }}>
+                        <span className="countdown-number">{item.daysLeft}</span>
+                        <span className="countdown-unit">天</span>
+                      </div>
+                      <div className="countdown-time-block">
+                        <span className="countdown-number-sm">{item.hoursLeft}</span>
+                        <span className="countdown-unit">时</span>
+                      </div>
+                      <div className="countdown-time-block">
+                        <span className="countdown-number-sm">{item.minutesLeft}</span>
+                        <span className="countdown-unit">分</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {item.isNear && !item.isToday && (
+                  <div className="countdown-badge" style={{ backgroundColor: `${getCountdownColor(item)}20`, color: getCountdownColor(item) }}>
+                    即将到来
+                  </div>
+                )}
+                {item.atmosphere && item.atmosphere !== 'none' && (
+                  <div className="countdown-atmosphere">
+                    {item.atmosphere === 'romantic' ? '💕 浪漫氛围' : '🎊 喜庆氛围'}
+                  </div>
+                )}
+                <div className="countdown-date muted">{item.targetDate}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="dashboard-grid grid grid-2">
         <div className="card">
@@ -252,6 +335,145 @@ function Dashboard() {
 
         .stats-grid {
           margin-bottom: 32px;
+        }
+
+        .countdown-section {
+          margin-bottom: 32px;
+        }
+
+        .section-header {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+
+        .section-title {
+          font-size: 20px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .section-icon {
+          font-size: 22px;
+        }
+
+        .section-subtitle {
+          font-size: 14px;
+        }
+
+        .countdown-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 16px;
+        }
+
+        .countdown-card {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .countdown-card.countdown-today {
+          border: 1px solid rgba(233, 30, 99, 0.4);
+          background: linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(253, 121, 168, 0.05));
+        }
+
+        .countdown-card.countdown-near {
+          border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .countdown-card-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .countdown-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 22px;
+          flex-shrink: 0;
+        }
+
+        .countdown-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .countdown-title {
+          font-size: 15px;
+          font-weight: 600;
+          margin-bottom: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .countdown-type {
+          font-size: 12px;
+          color: var(--text-muted);
+        }
+
+        .countdown-timer {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .countdown-time-block {
+          display: flex;
+          align-items: baseline;
+          gap: 2px;
+        }
+
+        .countdown-number {
+          font-size: 36px;
+          font-weight: 700;
+          line-height: 1;
+        }
+
+        .countdown-number-sm {
+          font-size: 20px;
+          font-weight: 600;
+          line-height: 1;
+        }
+
+        .countdown-unit {
+          font-size: 13px;
+          color: var(--text-muted);
+          margin-left: 2px;
+        }
+
+        .countdown-today-text {
+          font-size: 22px;
+          font-weight: 700;
+        }
+
+        .countdown-badge {
+          display: inline-block;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 500;
+          margin-bottom: 8px;
+        }
+
+        .countdown-atmosphere {
+          font-size: 13px;
+          color: var(--accent);
+          margin-bottom: 8px;
+        }
+
+        .countdown-date {
+          font-size: 12px;
         }
 
         .stat-card {
