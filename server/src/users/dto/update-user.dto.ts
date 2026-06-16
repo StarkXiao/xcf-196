@@ -40,5 +40,7 @@ export class UpdateUserDto {
     pactReminder?: boolean;
     checkinReminder?: boolean;
     anniversaryReminder?: boolean;
+    smartDedup?: boolean;
+    staggeredDelivery?: boolean;
   };
 }

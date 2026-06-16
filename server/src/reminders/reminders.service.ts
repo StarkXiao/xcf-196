@@ -1,8 +1,17 @@
 import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { mockReminders, Reminder } from '../data/seed';
+import { mockReminders, Reminder, User } from '../data/seed';
 import { PactsService } from '../pacts/pacts.service';
 import { UsersService } from '../users/users.service';
+
+const DEFAULT_NOTIFICATIONS: User['notifications'] = {
+  dailyReminder: true,
+  pactReminder: true,
+  checkinReminder: true,
+  anniversaryReminder: true,
+  smartDedup: true,
+  staggeredDelivery: true,
+};
 
 @Injectable()
 export class RemindersService {
@@ -100,8 +109,11 @@ export class RemindersService {
     return reminder.date || today;
   }
 
-  private isReminderEnabledBySettings(reminder: Reminder, user: any): boolean {
-    const notifications = user.notifications || {};
+  private isReminderEnabledBySettings(reminder: Reminder, user: User): boolean {
+    const notifications: User['notifications'] = {
+      ...DEFAULT_NOTIFICATIONS,
+      ...(user.notifications || {}),
+    };
     if (reminder.type === 'anniversary') {
       return notifications.anniversaryReminder !== false;
     }
@@ -213,7 +225,10 @@ export class RemindersService {
 
   getSmartReminders(days: number = 7): Reminder[] {
     const user = this.usersService.findOne();
-    const notifications = user.notifications || {};
+    const notifications: User['notifications'] = {
+      ...DEFAULT_NOTIFICATIONS,
+      ...(user.notifications || {}),
+    };
     const smartDedup = notifications.smartDedup !== false;
     const staggeredDelivery = notifications.staggeredDelivery !== false;
 
@@ -270,7 +285,7 @@ export class RemindersService {
       groupedByDate.get(r.nextDate)!.push(r);
     });
 
-    groupedByDate.forEach((remindersOnDate, date) => {
+    groupedByDate.forEach((remindersOnDate) => {
       const criticalReminders = remindersOnDate.filter(r => r.computedPriority === 'critical');
       const highReminders = remindersOnDate.filter(r => r.computedPriority === 'high');
       const mediumReminders = remindersOnDate.filter(r => r.computedPriority === 'medium');
@@ -301,9 +316,7 @@ export class RemindersService {
           aggregatedHigh.isAggregated = true;
           aggregatedHigh.aggregatedCount = highReminders.length;
           if (staggeredDelivery) {
-            aggregatedHigh.time = staggeredDelivery
-              ? this.getStaggeredTime('high', criticalReminders.length)
-              : aggregatedHigh.time;
+            aggregatedHigh.time = this.getStaggeredTime('high', criticalReminders.length);
           }
           result.push(aggregatedHigh);
         }
@@ -363,10 +376,6 @@ export class RemindersService {
         }
       }
     });
-
-    if (staggeredDelivery && smartDedup) {
-      return result;
-    }
 
     return result;
   }
