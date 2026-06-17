@@ -13,6 +13,11 @@ const typeLabels: Record<string, string> = {
   wish_created: '新愿望',
   wish_claimed: '认领愿望',
   wish_completed: '完成愿望',
+  gift_created: '礼物计划',
+  gift_purchased: '礼物已购买',
+  gift_wrapped: '礼物已包装',
+  gift_delivered: '礼物已送达',
+  gift_completed: '礼物完成',
 };
 
 const moodMap: Record<string, { emoji: string; label: string; color: string }> = {
@@ -270,6 +275,7 @@ function Timeline() {
             { value: 'checkin', label: '打卡' },
             { value: 'makeup_checkin', label: '补签' },
             { value: 'wish_created', label: '愿望' },
+            { value: 'gift_created', label: '礼物' },
           ].map(tab => (
             <button
               key={tab.value}
@@ -926,6 +932,31 @@ function Timeline() {
         }
 
         .timeline-type.type-wish_completed {
+          background: rgba(0, 184, 148, 0.2);
+          color: #00b894;
+        }
+
+        .timeline-type.type-gift_created {
+          background: rgba(233, 30, 99, 0.2);
+          color: #e91e63;
+        }
+
+        .timeline-type.type-gift_purchased {
+          background: rgba(253, 203, 110, 0.2);
+          color: #fdcb6e;
+        }
+
+        .timeline-type.type-gift_wrapped {
+          background: rgba(162, 155, 254, 0.2);
+          color: #a29bfe;
+        }
+
+        .timeline-type.type-gift_delivered {
+          background: rgba(0, 206, 201, 0.2);
+          color: #00cec9;
+        }
+
+        .timeline-type.type-gift_completed {
           background: rgba(0, 184, 148, 0.2);
           color: #00b894;
         }

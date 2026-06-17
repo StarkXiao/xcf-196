@@ -39,6 +39,9 @@ import type {
   TravelPlanStats,
   BudgetStats,
   PlanFullDetails,
+  GiftPlan,
+  GiftItem,
+  GiftStats,
 } from '../types';
 
 const api = axios.create({
@@ -305,4 +308,28 @@ export const travelPlansApi = {
   removeReminder: (id: string) => api.delete(`/travel-plans/reminders/${id}`),
   toggleReminder: (id: string) =>
     api.post<TravelReminder>(`/travel-plans/reminders/${id}/toggle`).then(res => res.data),
+};
+
+export const giftPlansApi = {
+  findAll: (status?: string, category?: string, recipient?: string) =>
+    api.get<GiftPlan[]>('/gift-plans', { params: { status, category, recipient } }).then(res => res.data),
+  findOne: (id: string) => api.get<GiftPlan>(`/gift-plans/${id}`).then(res => res.data),
+  create: (data: Partial<GiftPlan>) => api.post<GiftPlan>('/gift-plans', data).then(res => res.data),
+  update: (id: string, data: Partial<GiftPlan>) =>
+    api.patch<GiftPlan>(`/gift-plans/${id}`, data).then(res => res.data),
+  updateStatus: (id: string, status: GiftPlan['status']) =>
+    api.post<GiftPlan>(`/gift-plans/${id}/status`, { status }).then(res => res.data),
+  addGiftItem: (id: string, data: Partial<GiftItem>) =>
+    api.post<GiftItem>(`/gift-plans/${id}/items`, data).then(res => res.data),
+  updateGiftItem: (giftId: string, itemId: string, data: Partial<GiftItem>) =>
+    api.patch<GiftItem>(`/gift-plans/${giftId}/items/${itemId}`, data).then(res => res.data),
+  removeGiftItem: (giftId: string, itemId: string) =>
+    api.delete(`/gift-plans/${giftId}/items/${itemId}`),
+  complete: (id: string, data?: { review?: string; rating?: number; recipientReaction?: string; photos?: string[] }) =>
+    api.post<GiftPlan>(`/gift-plans/${id}/complete`, data || {}).then(res => res.data),
+  cancel: (id: string) => api.post<GiftPlan>(`/gift-plans/${id}/cancel`).then(res => res.data),
+  remove: (id: string) => api.delete(`/gift-plans/${id}`),
+  getStats: () => api.get<GiftStats>('/gift-plans/stats').then(res => res.data),
+  getUpcoming: (days?: number) =>
+    api.get<GiftPlan[]>('/gift-plans/upcoming', { params: { days } }).then(res => res.data),
 };

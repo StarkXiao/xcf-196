@@ -1099,3 +1099,323 @@ export const mockWishes: WishItem[] = [
     updatedAt: '2026-06-15T09:00:00Z',
   },
 ];
+
+export interface GiftItem {
+  id: string;
+  name: string;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  isPurchased: boolean;
+  purchasedDate?: string;
+  store?: string;
+  link?: string;
+  notes?: string;
+}
+
+export interface GiftPlan {
+  id: string;
+  title: string;
+  description: string;
+  recipient: 'user' | 'partner' | 'both';
+  preparedBy: 'user' | 'partner';
+  category: 'anniversary' | 'birthday' | 'valentine' | 'christmas' | 'graduation' | 'housewarming' | 'promotion' | 'other';
+  occasion: string;
+  occasionDate: string;
+  status: 'planning' | 'purchased' | 'wrapped' | 'delivered' | 'completed' | 'cancelled';
+  budget: number;
+  actualSpent: number;
+  isAnonymous: boolean;
+  anonymousMessage?: string;
+  deliveryMethod: 'in_person' | 'delivery' | 'mail' | 'pickup' | 'other';
+  deliveryAddress?: string;
+  deliveryDate?: string;
+  deliveryTime?: string;
+  reminderEnabled: boolean;
+  reminderDaysBefore: number;
+  deliveryReminderEnabled: boolean;
+  deliveryReminderDate?: string;
+  giftItems: GiftItem[];
+  photos?: string[];
+  review?: string;
+  rating?: number;
+  recipientReaction?: string;
+  color: string;
+  icon: string;
+  linkedAnniversaryId?: string;
+  linkedTimelineEventId?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export const mockGiftPlans: GiftPlan[] = [
+  {
+    id: 'gift-1',
+    title: '三周年纪念礼物',
+    description: '为我们的三周年纪念日准备一份特别的礼物',
+    recipient: 'partner',
+    preparedBy: 'user',
+    category: 'anniversary',
+    occasion: '在一起三周年',
+    occasionDate: '2026-02-14',
+    status: 'completed',
+    budget: 2000,
+    actualSpent: 1899,
+    isAnonymous: false,
+    deliveryMethod: 'in_person',
+    deliveryDate: '2026-02-14',
+    deliveryTime: '19:00',
+    reminderEnabled: true,
+    reminderDaysBefore: 7,
+    deliveryReminderEnabled: true,
+    deliveryReminderDate: '2026-02-14',
+    giftItems: [
+      {
+        id: 'gift-item-1',
+        name: '定制情侣项链',
+        description: '刻有我们名字和纪念日的纯银项链',
+        quantity: 1,
+        unitPrice: 1299,
+        totalPrice: 1299,
+        isPurchased: true,
+        purchasedDate: '2026-02-01',
+        store: '周大福',
+        notes: '选了简约款，TA喜欢低调',
+      },
+      {
+        id: 'gift-item-2',
+        name: '手工巧克力礼盒',
+        description: 'TA最爱的黑巧克力，99%纯度',
+        quantity: 2,
+        unitPrice: 300,
+        totalPrice: 600,
+        isPurchased: true,
+        purchasedDate: '2026-02-12',
+        store: 'Godiva',
+        notes: '记得提前一天冷藏',
+      },
+    ],
+    photos: [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=silver%20necklace%20with%20engraved%20names%20romantic%20gift&image_size=landscape_16_9',
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=luxury%20chocolate%20gift%20box%20with%20ribbon&image_size=landscape_16_9',
+    ],
+    review: 'TA看到项链时眼睛都亮了，说这是收到过最用心的礼物。我们一起戴上项链，感觉心又近了一步。',
+    rating: 5,
+    recipientReaction: '感动得哭了，紧紧抱了我很久',
+    color: '#e91e63',
+    icon: '💕',
+    createdAt: '2026-01-15T10:00:00Z',
+    updatedAt: '2026-02-14T22:00:00Z',
+    completedAt: '2026-02-14T22:00:00Z',
+  },
+  {
+    id: 'gift-2',
+    title: 'TA的生日礼物',
+    description: '为TA准备一个惊喜生日派对',
+    recipient: 'partner',
+    preparedBy: 'user',
+    category: 'birthday',
+    occasion: 'TA的生日',
+    occasionDate: '2026-08-20',
+    status: 'planning',
+    budget: 3000,
+    actualSpent: 800,
+    isAnonymous: true,
+    anonymousMessage: '生日快乐，我的星~ 愿你所有的愿望都能实现 ✨',
+    deliveryMethod: 'in_person',
+    deliveryDate: '2026-08-20',
+    deliveryTime: '00:00',
+    reminderEnabled: true,
+    reminderDaysBefore: 14,
+    deliveryReminderEnabled: true,
+    deliveryReminderDate: '2026-08-20',
+    giftItems: [
+      {
+        id: 'gift-item-3',
+        name: '最新款相机',
+        description: 'TA一直想要的索尼微单',
+        quantity: 1,
+        unitPrice: 2200,
+        totalPrice: 2200,
+        isPurchased: false,
+        store: '索尼官方旗舰店',
+        link: 'https://example.com/camera',
+        notes: '等618促销再买',
+      },
+      {
+        id: 'gift-item-4',
+        name: '生日蛋糕',
+        description: '定制星座主题蛋糕，芒果夹心',
+        quantity: 1,
+        unitPrice: 398,
+        totalPrice: 398,
+        isPurchased: false,
+        store: '好利来',
+        notes: '需要提前3天预订',
+      },
+      {
+        id: 'gift-item-5',
+        name: '生日蜡烛和装饰',
+        description: '金色数字蜡烛和气球装饰',
+        quantity: 1,
+        unitPrice: 200,
+        totalPrice: 200,
+        isPurchased: true,
+        purchasedDate: '2026-06-10',
+        store: '淘宝',
+        notes: '已经收到货了，藏在衣柜最上层',
+      },
+    ],
+    color: '#ff9800',
+    icon: '🎂',
+    createdAt: '2026-06-01T10:00:00Z',
+    updatedAt: '2026-06-15T10:00:00Z',
+  },
+  {
+    id: 'gift-3',
+    title: '情人节惊喜',
+    description: '情人节的浪漫惊喜',
+    recipient: 'partner',
+    preparedBy: 'user',
+    category: 'valentine',
+    occasion: '情人节',
+    occasionDate: '2026-02-14',
+    status: 'completed',
+    budget: 1500,
+    actualSpent: 1450,
+    isAnonymous: false,
+    deliveryMethod: 'in_person',
+    deliveryDate: '2026-02-14',
+    deliveryTime: '18:00',
+    reminderEnabled: true,
+    reminderDaysBefore: 3,
+    deliveryReminderEnabled: true,
+    deliveryReminderDate: '2026-02-14',
+    giftItems: [
+      {
+        id: 'gift-item-6',
+        name: '99朵红玫瑰',
+        description: '代表天长地久的爱情',
+        quantity: 1,
+        unitPrice: 888,
+        totalPrice: 888,
+        isPurchased: true,
+        purchasedDate: '2026-02-13',
+        store: '花点时间',
+        notes: '选了卡罗拉红玫瑰',
+      },
+      {
+        id: 'gift-item-7',
+        name: '浪漫晚餐预订',
+        description: 'TA最爱的法餐厅，靠窗位置',
+        quantity: 1,
+        unitPrice: 562,
+        totalPrice: 562,
+        isPurchased: true,
+        purchasedDate: '2026-02-01',
+        store: 'Le Jardin',
+        notes: '预订了晚上7点的位置，记得带身份证',
+      },
+    ],
+    review: '虽然是和周年纪念一起过的，但TA说这是最浪漫的一个情人节。餐厅的小提琴手专门为我们演奏了一曲，那一刻真的很幸福。',
+    rating: 5,
+    recipientReaction: '一直在笑，眼里有星星',
+    color: '#f06292',
+    icon: '💝',
+    createdAt: '2026-01-20T10:00:00Z',
+    updatedAt: '2026-02-14T23:00:00Z',
+    completedAt: '2026-02-14T23:00:00Z',
+  },
+  {
+    id: 'gift-4',
+    title: '圣诞节交换礼物',
+    description: '圣诞节的神秘交换礼物',
+    recipient: 'partner',
+    preparedBy: 'user',
+    category: 'christmas',
+    occasion: '圣诞节',
+    occasionDate: '2026-12-25',
+    status: 'planning',
+    budget: 500,
+    actualSpent: 0,
+    isAnonymous: true,
+    anonymousMessage: '圣诞快乐！愿这个冬天有我，你永远不会寒冷 🎄',
+    deliveryMethod: 'in_person',
+    deliveryDate: '2026-12-25',
+    deliveryTime: '08:00',
+    reminderEnabled: true,
+    reminderDaysBefore: 7,
+    deliveryReminderEnabled: true,
+    deliveryReminderDate: '2026-12-25',
+    giftItems: [
+      {
+        id: 'gift-item-8',
+        name: '温暖牌围巾',
+        description: '纯羊毛手工围巾，藏青色',
+        quantity: 1,
+        unitPrice: 450,
+        totalPrice: 450,
+        isPurchased: false,
+        store: '优衣库',
+        notes: '等双十一入手',
+      },
+    ],
+    color: '#4caf50',
+    icon: '🎄',
+    createdAt: '2026-06-10T10:00:00Z',
+    updatedAt: '2026-06-10T10:00:00Z',
+  },
+  {
+    id: 'gift-5',
+    title: '升职庆祝礼物',
+    description: '恭喜TA升职的庆祝礼物',
+    recipient: 'partner',
+    preparedBy: 'user',
+    category: 'promotion',
+    occasion: 'TA升职',
+    occasionDate: '2026-07-01',
+    status: 'wrapped',
+    budget: 800,
+    actualSpent: 756,
+    isAnonymous: false,
+    deliveryMethod: 'in_person',
+    deliveryDate: '2026-07-01',
+    deliveryTime: '20:00',
+    reminderEnabled: true,
+    reminderDaysBefore: 3,
+    deliveryReminderEnabled: true,
+    deliveryReminderDate: '2026-07-01',
+    giftItems: [
+      {
+        id: 'gift-item-9',
+        name: '商务钢笔',
+        description: '万宝龙入门款商务钢笔',
+        quantity: 1,
+        unitPrice: 688,
+        totalPrice: 688,
+        isPurchased: true,
+        purchasedDate: '2026-06-25',
+        store: '万宝龙专柜',
+        notes: '刻了TA的名字缩写',
+      },
+      {
+        id: 'gift-item-10',
+        name: '定制贺卡',
+        description: '手写的祝福贺卡',
+        quantity: 1,
+        unitPrice: 68,
+        totalPrice: 68,
+        isPurchased: true,
+        purchasedDate: '2026-06-28',
+        store: '纸先生',
+        notes: '写了整整一页',
+      },
+    ],
+    color: '#2196f3',
+    icon: '🎉',
+    createdAt: '2026-06-20T10:00:00Z',
+    updatedAt: '2026-06-29T10:00:00Z',
+  },
+];
