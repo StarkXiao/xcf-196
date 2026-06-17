@@ -9,6 +9,7 @@ import { SubtasksModule } from './subtasks/subtasks.module';
 import { GrowthModule } from './growth/growth.module';
 import { MonthlyReviewModule } from './monthly-review/monthly-review.module';
 import { WishlistModule } from './wishlist/wishlist.module';
+import { TravelPlansModule } from './travel-plans/travel-plans.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
     GrowthModule,
     MonthlyReviewModule,
     WishlistModule,
+    TravelPlansModule,
   ],
 })
 export class AppModule {}

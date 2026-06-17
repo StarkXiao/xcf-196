@@ -30,6 +30,15 @@ import type {
   BuildingMapData,
   CollectResult,
   BuildingActionResult,
+  TravelPlan,
+  TravelItinerary,
+  TravelBudget,
+  TravelCheckin,
+  TravelMemory,
+  TravelReminder,
+  TravelPlanStats,
+  BudgetStats,
+  PlanFullDetails,
 } from '../types';
 
 const api = axios.create({
@@ -234,4 +243,66 @@ export const wishlistApi = {
   getStats: () => api.get<WishStats>('/wishlist/stats').then(res => res.data),
   getUpcomingReminders: (days?: number) =>
     api.get<WishItem[]>('/wishlist/upcoming-reminders', { params: { days } }).then(res => res.data),
+};
+
+export const travelPlansApi = {
+  findAll: (status?: string) =>
+    api.get<TravelPlan[]>('/travel-plans', { params: { status } }).then(res => res.data),
+  findOne: (id: string) => api.get<TravelPlan>(`/travel-plans/${id}`).then(res => res.data),
+  getFullDetails: (id: string) =>
+    api.get<PlanFullDetails>(`/travel-plans/${id}/full`).then(res => res.data),
+  create: (data: Partial<TravelPlan>) =>
+    api.post<TravelPlan>('/travel-plans', data).then(res => res.data),
+  update: (id: string, data: Partial<TravelPlan>) =>
+    api.patch<TravelPlan>(`/travel-plans/${id}`, data).then(res => res.data),
+  remove: (id: string) => api.delete(`/travel-plans/${id}`),
+  complete: (id: string, data?: { overallRating?: number; overallReview?: string }) =>
+    api.post<TravelPlan>(`/travel-plans/${id}/complete`, data || {}).then(res => res.data),
+  getStats: () => api.get<TravelPlanStats>('/travel-plans/stats').then(res => res.data),
+  getUpcoming: (days?: number) =>
+    api.get<TravelPlan[]>('/travel-plans/upcoming', { params: { days } }).then(res => res.data),
+
+  getItineraries: (planId: string) =>
+    api.get<TravelItinerary[]>(`/travel-plans/${planId}/itineraries`).then(res => res.data),
+  createItinerary: (data: Partial<TravelItinerary> & { planId: string; dayIndex: number; date: string; title: string; order?: number }) =>
+    api.post<TravelItinerary>('/travel-plans/itineraries', data).then(res => res.data),
+  updateItinerary: (id: string, data: Partial<TravelItinerary>) =>
+    api.patch<TravelItinerary>(`/travel-plans/itineraries/${id}`, data).then(res => res.data),
+  removeItinerary: (id: string) => api.delete(`/travel-plans/itineraries/${id}`),
+
+  getBudgets: (planId: string) =>
+    api.get<TravelBudget[]>(`/travel-plans/${planId}/budgets`).then(res => res.data),
+  getBudgetStats: (planId: string) =>
+    api.get<BudgetStats>(`/travel-plans/${planId}/budget-stats`).then(res => res.data),
+  createBudget: (data: Partial<TravelBudget> & { planId: string; category: TravelBudget['category']; amount: number; description: string; date: string }) =>
+    api.post<TravelBudget>('/travel-plans/budgets', data).then(res => res.data),
+  updateBudget: (id: string, data: Partial<TravelBudget>) =>
+    api.patch<TravelBudget>(`/travel-plans/budgets/${id}`, data).then(res => res.data),
+  removeBudget: (id: string) => api.delete(`/travel-plans/budgets/${id}`),
+
+  getCheckins: (planId: string) =>
+    api.get<TravelCheckin[]>(`/travel-plans/${planId}/checkins`).then(res => res.data),
+  createCheckin: (data: Partial<TravelCheckin> & { planId: string; title: string; location: string; date: string; time: string; mood: TravelCheckin['mood'] }) =>
+    api.post<TravelCheckin>('/travel-plans/checkins', data).then(res => res.data),
+  removeCheckin: (id: string) => api.delete(`/travel-plans/checkins/${id}`),
+
+  getMemories: (planId: string) =>
+    api.get<TravelMemory[]>(`/travel-plans/${planId}/memories`).then(res => res.data),
+  createMemory: (data: Partial<TravelMemory> & { planId: string; title: string; date: string }) =>
+    api.post<TravelMemory>('/travel-plans/memories', data).then(res => res.data),
+  updateMemory: (id: string, data: Partial<TravelMemory>) =>
+    api.patch<TravelMemory>(`/travel-plans/memories/${id}`, data).then(res => res.data),
+  removeMemory: (id: string) => api.delete(`/travel-plans/memories/${id}`),
+  toggleMemoryFavorite: (id: string) =>
+    api.post<TravelMemory>(`/travel-plans/memories/${id}/toggle-favorite`).then(res => res.data),
+
+  getReminders: (planId: string) =>
+    api.get<TravelReminder[]>(`/travel-plans/${planId}/reminders`).then(res => res.data),
+  createReminder: (data: Partial<TravelReminder> & { planId: string; title: string; type: TravelReminder['type']; date: string; time: string }) =>
+    api.post<TravelReminder>('/travel-plans/reminders', data).then(res => res.data),
+  updateReminder: (id: string, data: Partial<TravelReminder>) =>
+    api.patch<TravelReminder>(`/travel-plans/reminders/${id}`, data).then(res => res.data),
+  removeReminder: (id: string) => api.delete(`/travel-plans/reminders/${id}`),
+  toggleReminder: (id: string) =>
+    api.post<TravelReminder>(`/travel-plans/reminders/${id}/toggle`).then(res => res.data),
 };

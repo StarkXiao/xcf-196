@@ -9,6 +9,7 @@ const navItems = [
   { path: '/checkins', label: '打卡', icon: '📝' },
   { path: '/wishlist', label: '愿望清单', icon: '💫' },
   { path: '/building-map', label: '建筑地图', icon: '🗺️' },
+  { path: '/travel-plans', label: '旅行计划', icon: '✈️' },
   { path: '/timeline', label: '时间线', icon: '🕐' },
   { path: '/reminders', label: '提醒', icon: '🔔' },
   { path: '/monthly-review', label: '月度回顾', icon: '📊' },

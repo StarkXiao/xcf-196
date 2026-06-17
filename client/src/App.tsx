@@ -9,6 +9,7 @@ import Settings from './pages/Settings';
 import MonthlyReview from './pages/MonthlyReview';
 import Wishlist from './pages/Wishlist';
 import BuildingMap from './pages/BuildingMap';
+import TravelPlans from './pages/TravelPlans';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="checkins" element={<Checkins />} />
         <Route path="wishlist" element={<Wishlist />} />
         <Route path="building-map" element={<BuildingMap />} />
+        <Route path="travel-plans" element={<TravelPlans />} />
         <Route path="timeline" element={<Timeline />} />
         <Route path="reminders" element={<Reminders />} />
         <Route path="monthly-review" element={<MonthlyReview />} />
