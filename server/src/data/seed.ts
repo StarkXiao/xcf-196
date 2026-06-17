@@ -817,3 +817,167 @@ export const mockSubtasks: Subtask[] = [
     icon: '👨‍🍳',
   },
 ];
+
+export interface WishItem {
+  id: string;
+  title: string;
+  description: string;
+  category: 'travel' | 'food' | 'experience' | 'growth' | 'romance' | 'other';
+  status: 'pending' | 'claimed' | 'in_progress' | 'completed' | 'abandoned';
+  createdBy: 'user' | 'partner';
+  claimedBy?: 'user' | 'partner' | 'both';
+  progress: number;
+  targetProgress: number;
+  progressUnit: string;
+  deadline?: string;
+  reminderEnabled: boolean;
+  reminderDaysBefore: number;
+  completedAt?: string;
+  completedReview?: string;
+  completedRating?: number;
+  completedPhotos?: string[];
+  color: string;
+  icon: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const mockWishes: WishItem[] = [
+  {
+    id: 'wish-1',
+    title: '一起去北海道看雪',
+    description: '冬天去北海道，看漫天飘雪，泡温泉，吃新鲜的海鲜',
+    category: 'travel',
+    status: 'in_progress',
+    createdBy: 'user',
+    claimedBy: 'partner',
+    progress: 3,
+    targetProgress: 5,
+    progressUnit: '步',
+    deadline: '2026-12-31',
+    reminderEnabled: true,
+    reminderDaysBefore: 7,
+    color: '#74b9ff',
+    icon: '❄️',
+    createdAt: '2024-06-01T10:00:00Z',
+    updatedAt: '2026-05-20T10:00:00Z',
+  },
+  {
+    id: 'wish-2',
+    title: '学会做提拉米苏',
+    description: '一起学做正宗的意式提拉米苏，给对方一个甜蜜惊喜',
+    category: 'food',
+    status: 'claimed',
+    createdBy: 'partner',
+    claimedBy: 'user',
+    progress: 0,
+    targetProgress: 1,
+    progressUnit: '次',
+    deadline: '2026-08-15',
+    reminderEnabled: true,
+    reminderDaysBefore: 3,
+    color: '#fd79a8',
+    icon: '🍰',
+    createdAt: '2024-08-20T14:00:00Z',
+    updatedAt: '2026-05-15T14:00:00Z',
+  },
+  {
+    id: 'wish-3',
+    title: '一起看日出',
+    description: '找一座山顶，一起等日出，看第一缕阳光照亮世界',
+    category: 'experience',
+    status: 'completed',
+    createdBy: 'user',
+    claimedBy: 'both',
+    progress: 1,
+    targetProgress: 1,
+    progressUnit: '次',
+    reminderEnabled: false,
+    reminderDaysBefore: 3,
+    completedAt: '2025-03-21T06:30:00Z',
+    completedReview: '太美了！山顶的日出真的让人感动，那一刻我们拥抱在一起，感觉全世界都是温暖的',
+    completedRating: 5,
+    completedPhotos: [],
+    color: '#fdcb6e',
+    icon: '🌅',
+    createdAt: '2024-05-10T09:00:00Z',
+    updatedAt: '2025-03-21T06:30:00Z',
+  },
+  {
+    id: 'wish-4',
+    title: '一起学习潜水',
+    description: '考取潜水证，一起去探索海底世界',
+    category: 'growth',
+    status: 'pending',
+    createdBy: 'partner',
+    progress: 0,
+    targetProgress: 3,
+    progressUnit: '阶段',
+    deadline: '2026-10-01',
+    reminderEnabled: true,
+    reminderDaysBefore: 14,
+    color: '#00cec9',
+    icon: '🤿',
+    createdAt: '2025-01-15T11:00:00Z',
+    updatedAt: '2025-01-15T11:00:00Z',
+  },
+  {
+    id: 'wish-5',
+    title: '写一封情书给对方',
+    description: '用最传统的方式，把心里话写在纸上，亲手交给TA',
+    category: 'romance',
+    status: 'completed',
+    createdBy: 'user',
+    claimedBy: 'user',
+    progress: 1,
+    targetProgress: 1,
+    progressUnit: '封',
+    reminderEnabled: false,
+    reminderDaysBefore: 3,
+    completedAt: '2025-02-14T20:00:00Z',
+    completedReview: '在情人节那天写了一封长长的情书，TA读完后哭了，这是我们之间最珍贵的记忆',
+    completedRating: 5,
+    completedPhotos: [],
+    color: '#e91e63',
+    icon: '💌',
+    createdAt: '2024-12-01T08:00:00Z',
+    updatedAt: '2025-02-14T20:00:00Z',
+  },
+  {
+    id: 'wish-6',
+    title: '一起去看极光',
+    description: '去北欧看极光，感受大自然的奇妙',
+    category: 'travel',
+    status: 'pending',
+    createdBy: 'partner',
+    progress: 0,
+    targetProgress: 5,
+    progressUnit: '步',
+    deadline: '2027-03-01',
+    reminderEnabled: true,
+    reminderDaysBefore: 30,
+    color: '#a29bfe',
+    icon: '🌌',
+    createdAt: '2025-06-01T10:00:00Z',
+    updatedAt: '2025-06-01T10:00:00Z',
+  },
+  {
+    id: 'wish-7',
+    title: '种一盆属于我们的花',
+    description: '一起选花、种花、浇水，看着它和我们的爱一起成长',
+    category: 'romance',
+    status: 'in_progress',
+    createdBy: 'user',
+    claimedBy: 'both',
+    progress: 15,
+    targetProgress: 30,
+    progressUnit: '天',
+    deadline: '2026-09-01',
+    reminderEnabled: true,
+    reminderDaysBefore: 5,
+    color: '#55efc4',
+    icon: '🌺',
+    createdAt: '2026-05-01T09:00:00Z',
+    updatedAt: '2026-06-15T09:00:00Z',
+  },
+];

@@ -339,3 +339,46 @@ export interface PactCategoryStats {
 export interface PactStatsExtended extends PactStats {
   byCategory: PactCategoryStats[];
 }
+
+export interface WishItem {
+  id: string;
+  title: string;
+  description: string;
+  category: 'travel' | 'food' | 'experience' | 'growth' | 'romance' | 'other';
+  status: 'pending' | 'claimed' | 'in_progress' | 'completed' | 'abandoned';
+  createdBy: 'user' | 'partner';
+  claimedBy?: 'user' | 'partner' | 'both';
+  progress: number;
+  targetProgress: number;
+  progressUnit: string;
+  deadline?: string;
+  reminderEnabled: boolean;
+  reminderDaysBefore: number;
+  completedAt?: string;
+  completedReview?: string;
+  completedRating?: number;
+  completedPhotos?: string[];
+  color: string;
+  icon: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WishStats {
+  total: number;
+  pending: number;
+  claimed: number;
+  inProgress: number;
+  completed: number;
+  abandoned: number;
+  completionRate: number;
+  byCategory: {
+    category: string;
+    label: string;
+    total: number;
+    completed: number;
+    inProgress: number;
+    pending: number;
+  }[];
+  upcomingDeadlines: WishItem[];
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi, growthApi } from '../services/api';
+import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi, growthApi, wishlistApi } from '../services/api';
 import type {
   Pact,
   Checkin,
@@ -15,6 +15,8 @@ import type {
   TrendStats,
   PactStatsExtended,
   PeriodUnit,
+  WishItem,
+  WishStats,
 } from '../types';
 
 function Dashboard() {
@@ -38,6 +40,9 @@ function Dashboard() {
   const [allBadges, setAllBadges] = useState<Badge[]>([]);
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
   const [celebrateResult, setCelebrateResult] = useState<{ id: string; points: number } | null>(null);
+  const [wishStats, setWishStats] = useState<WishStats | null>(null);
+  const [recentWishes, setRecentWishes] = useState<WishItem[]>([]);
+  const [upcomingWishReminders, setUpcomingWishReminders] = useState<WishItem[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -49,7 +54,7 @@ function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [stats, statsExtended, checkinStatsData, pacts, resumes, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData] =
+      const [stats, statsExtended, checkinStatsData, pacts, resumes, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData, wishStatsData, wishData, wishRemindersData] =
         await Promise.all([
           pactsApi.getStats(),
           pactsApi.getStatsExtended(),
@@ -63,6 +68,9 @@ function Dashboard() {
           growthApi.getStats(),
           growthApi.getRecords(8),
           growthApi.getBadges(),
+          wishlistApi.getStats(),
+          wishlistApi.findAll(undefined, undefined),
+          wishlistApi.getUpcomingReminders(14),
         ]);
       setPactStats(stats);
       setPactStatsExtended(statsExtended);
@@ -76,6 +84,9 @@ function Dashboard() {
       setGrowthStats(growthStatsData);
       setGrowthRecords(growthRecordsData);
       setAllBadges(badgesData);
+      setWishStats(wishStatsData);
+      setRecentWishes(wishData.filter(w => w.status !== 'completed' && w.status !== 'abandoned').slice(0, 4));
+      setUpcomingWishReminders(wishRemindersData);
       loadTrendStats();
     } catch (error) {
       console.error('加载仪表盘数据失败', error);
@@ -574,6 +585,101 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      <div className="wish-dashboard-section">
+        <div className="section-header">
+          <h2 className="section-title">
+            <span className="section-icon">💫</span>
+            愿望清单
+          </h2>
+          <span className="section-subtitle muted">
+            {wishStats ? `${wishStats.completed}/${wishStats.total} 已实现` : '一起实现每个梦想'}
+          </span>
+          <Link to="/wishlist" className="card-link" style={{ marginLeft: 'auto' }}>
+            查看全部 →
+          </Link>
+        </div>
+        {wishStats && (
+          <div className="wish-stats-row">
+            <div className="wish-stat-mini card">
+              <span className="wish-stat-icon">🤚</span>
+              <span className="wish-stat-value">{wishStats.pending}</span>
+              <span className="wish-stat-label muted">待认领</span>
+            </div>
+            <div className="wish-stat-mini card">
+              <span className="wish-stat-icon">🏃</span>
+              <span className="wish-stat-value">{wishStats.claimed + wishStats.inProgress}</span>
+              <span className="wish-stat-label muted">进行中</span>
+            </div>
+            <div className="wish-stat-mini card">
+              <span className="wish-stat-icon">✅</span>
+              <span className="wish-stat-value">{wishStats.completed}</span>
+              <span className="wish-stat-label muted">已完成</span>
+            </div>
+            <div className="wish-stat-mini card">
+              <span className="wish-stat-icon">📈</span>
+              <span className="wish-stat-value">{wishStats.completionRate}%</span>
+              <span className="wish-stat-label muted">完成率</span>
+            </div>
+          </div>
+        )}
+        <div className="wish-dashboard-grid">
+          {recentWishes.map(wish => {
+            const progressPct = wish.targetProgress > 0 ? Math.round((wish.progress / wish.targetProgress) * 100) : 0;
+            return (
+              <Link key={wish.id} to="/wishlist" className="wish-dashboard-card card">
+                <div className="wish-dashboard-icon" style={{ backgroundColor: `${wish.color}20`, color: wish.color }}>
+                  {wish.icon}
+                </div>
+                <div className="wish-dashboard-info">
+                  <div className="wish-dashboard-title">{wish.title}</div>
+                  <div className="wish-dashboard-meta muted">
+                    {wish.status === 'pending' && '🤚 待认领'}
+                    {(wish.status === 'claimed' || wish.status === 'in_progress') && (
+                      <>🏃 {wish.progress}/{wish.targetProgress} {wish.progressUnit}</>
+                    )}
+                  </div>
+                </div>
+                {(wish.status === 'in_progress' || wish.status === 'claimed') && (
+                  <div className="wish-dashboard-progress">
+                    <div className="wish-dashboard-bar">
+                      <div className="wish-dashboard-fill" style={{ width: `${progressPct}%`, background: wish.color }} />
+                    </div>
+                    <span className="wish-dashboard-pct" style={{ color: wish.color }}>{progressPct}%</span>
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+          {recentWishes.length === 0 && (
+            <div className="empty-state card" style={{ padding: '30px' }}>
+              <div className="empty-icon">💫</div>
+              <p className="muted">还没有愿望，去许个愿望吧~</p>
+            </div>
+          )}
+        </div>
+        {upcomingWishReminders.length > 0 && (
+          <div className="wish-upcoming-list">
+            <div className="wish-upcoming-title">⏰ 即将到期</div>
+            {upcomingWishReminders.slice(0, 3).map(wish => {
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              const deadline = new Date(wish.deadline!);
+              deadline.setHours(0, 0, 0, 0);
+              const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              return (
+                <div key={wish.id} className="wish-upcoming-item">
+                  <span className="wish-upcoming-icon">{wish.icon}</span>
+                  <span className="wish-upcoming-name">{wish.title}</span>
+                  <span className={`wish-upcoming-days ${daysLeft < 0 ? 'overdue' : daysLeft <= wish.reminderDaysBefore ? 'urgent' : ''}`}>
+                    {daysLeft < 0 ? `逾期${Math.abs(daysLeft)}天` : daysLeft === 0 ? '今天' : `${daysLeft}天后`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {upcomingResumes.length > 0 && (
         <div className="resume-section">
@@ -2362,6 +2468,158 @@ function Dashboard() {
           .page-title {
             font-size: 22px;
           }
+        }
+
+        .wish-dashboard-section {
+          margin-bottom: 32px;
+        }
+
+        .wish-stats-row {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .wish-stat-mini {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          padding: 14px;
+          text-align: center;
+        }
+
+        .wish-stat-icon {
+          font-size: 22px;
+        }
+
+        .wish-stat-value {
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .wish-stat-label {
+          font-size: 12px;
+        }
+
+        .wish-dashboard-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .wish-dashboard-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 16px;
+          text-decoration: none;
+          color: inherit;
+          transition: all 0.2s;
+        }
+
+        .wish-dashboard-card:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .wish-dashboard-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+          flex-shrink: 0;
+        }
+
+        .wish-dashboard-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .wish-dashboard-title {
+          font-size: 14px;
+          font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .wish-dashboard-meta {
+          font-size: 12px;
+        }
+
+        .wish-dashboard-progress {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 80px;
+        }
+
+        .wish-dashboard-bar {
+          flex: 1;
+          height: 6px;
+          background: rgba(255, 255, 255, 0.06);
+          border-radius: 3px;
+          overflow: hidden;
+        }
+
+        .wish-dashboard-fill {
+          height: 100%;
+          border-radius: 3px;
+          transition: width 0.3s;
+        }
+
+        .wish-dashboard-pct {
+          font-size: 12px;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .wish-upcoming-list {
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .wish-upcoming-title {
+          font-size: 13px;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .wish-upcoming-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 0;
+          font-size: 13px;
+        }
+
+        .wish-upcoming-icon {
+          font-size: 16px;
+        }
+
+        .wish-upcoming-name {
+          flex: 1;
+        }
+
+        .wish-upcoming-days {
+          font-weight: 500;
+          color: #74b9ff;
+        }
+
+        .wish-upcoming-days.overdue {
+          color: #ff7675;
+        }
+
+        .wish-upcoming-days.urgent {
+          color: #fdcb6e;
         }
       `}</style>
     </div>

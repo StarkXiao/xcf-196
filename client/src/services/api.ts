@@ -22,6 +22,8 @@ import type {
   TrendStats,
   PactStatsExtended,
   PeriodUnit,
+  WishItem,
+  WishStats,
 } from '../types';
 
 const api = axios.create({
@@ -190,4 +192,25 @@ export const growthApi = {
 export const monthlyReviewApi = {
   getMonthlyReview: (year: number, month: number) =>
     api.get<MonthlyReviewData>('/monthly-review', { params: { year, month } }).then(res => res.data),
+};
+
+export const wishlistApi = {
+  findAll: (status?: string, category?: string) =>
+    api.get<WishItem[]>('/wishlist', { params: { status, category } }).then(res => res.data),
+  findOne: (id: string) => api.get<WishItem>(`/wishlist/${id}`).then(res => res.data),
+  create: (data: Partial<WishItem>) => api.post<WishItem>('/wishlist', data).then(res => res.data),
+  update: (id: string, data: Partial<WishItem>) =>
+    api.patch<WishItem>(`/wishlist/${id}`, data).then(res => res.data),
+  claim: (id: string, claimedBy: 'user' | 'partner') =>
+    api.post<WishItem>(`/wishlist/${id}/claim`, { claimedBy }).then(res => res.data),
+  progress: (id: string, amount: number) =>
+    api.post<WishItem>(`/wishlist/${id}/progress`, { amount }).then(res => res.data),
+  complete: (id: string, data?: { completedReview?: string; completedRating?: number }) =>
+    api.post<WishItem>(`/wishlist/${id}/complete`, data || {}).then(res => res.data),
+  abandon: (id: string) =>
+    api.post<WishItem>(`/wishlist/${id}/abandon`).then(res => res.data),
+  remove: (id: string) => api.delete(`/wishlist/${id}`),
+  getStats: () => api.get<WishStats>('/wishlist/stats').then(res => res.data),
+  getUpcomingReminders: (days?: number) =>
+    api.get<WishItem[]>('/wishlist/upcoming-reminders', { params: { days } }).then(res => res.data),
 };

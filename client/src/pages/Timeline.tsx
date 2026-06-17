@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { timelineApi, countdownApi, remindersApi, growthApi, pactsApi } from '../services/api';
-import type { TimelineEvent, CountdownItem, Reminder, GrowthStats, GrowthRecord, Pact } from '../types';
+import { timelineApi, countdownApi, remindersApi, growthApi, pactsApi, wishlistApi } from '../services/api';
+import type { TimelineEvent, CountdownItem, Reminder, GrowthStats, GrowthRecord, Pact, WishItem } from '../types';
 
 const typeLabels: Record<string, string> = {
   pact_created: '新约定',
@@ -10,6 +10,9 @@ const typeLabels: Record<string, string> = {
   milestone: '里程碑',
   anniversary: '纪念日',
   growth: '成长值',
+  wish_created: '新愿望',
+  wish_claimed: '认领愿望',
+  wish_completed: '完成愿望',
 };
 
 const moodMap: Record<string, { emoji: string; label: string; color: string }> = {
@@ -58,6 +61,7 @@ function Timeline() {
   const [growthStats, setGrowthStats] = useState<GrowthStats | null>(null);
   const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
   const [showGrowthView, setShowGrowthView] = useState(false);
+  const [upcomingWishes, setUpcomingWishes] = useState<WishItem[]>([]);
 
   useEffect(() => {
     loadTimeline();
@@ -92,7 +96,7 @@ function Timeline() {
   const loadTimeline = async () => {
     try {
       const { start, end } = getDateRangeFromFilter(dateRangeFilter);
-      const [data, pactsData, countdownData, allReminders, growthStatsData, growthRecordsData] = await Promise.all([
+      const [data, pactsData, countdownData, allReminders, growthStatsData, growthRecordsData, wishReminders] = await Promise.all([
         timelineApi.findAll(
           typeFilter === 'all' || typeFilter === 'growth' ? undefined : typeFilter,
           undefined,
@@ -107,6 +111,7 @@ function Timeline() {
         remindersApi.findAll(true),
         growthApi.getStats(),
         growthApi.getRecords(),
+        wishlistApi.getUpcomingReminders(30),
       ]);
       setEvents(data);
       setPacts(pactsData);
@@ -114,6 +119,7 @@ function Timeline() {
       setAnniversaryReminders(allReminders.filter(r => r.type === 'anniversary'));
       setGrowthStats(growthStatsData);
       setGrowthRecords(growthRecordsData);
+      setUpcomingWishes(wishReminders);
     } catch (error) {
       console.error('加载时间线失败', error);
     }
@@ -263,6 +269,7 @@ function Timeline() {
             { value: 'pact_created', label: '新约定' },
             { value: 'checkin', label: '打卡' },
             { value: 'makeup_checkin', label: '补签' },
+            { value: 'wish_created', label: '愿望' },
           ].map(tab => (
             <button
               key={tab.value}
@@ -423,6 +430,55 @@ function Timeline() {
                       ))}
                     </div>
                   )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {upcomingWishes.length > 0 && (
+        <div className="upcoming-timeline-section">
+          <div className="upcoming-section-title">
+            <span>💫 即将到期的愿望</span>
+          </div>
+          <div className="upcoming-timeline-list">
+            {upcomingWishes.map(wish => {
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              const deadline = new Date(wish.deadline!);
+              deadline.setHours(0, 0, 0, 0);
+              const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const isOverdue = daysLeft < 0;
+              const isUrgent = daysLeft >= 0 && daysLeft <= wish.reminderDaysBefore;
+              return (
+                <div
+                  key={wish.id}
+                  className={`upcoming-timeline-card card ${isOverdue ? 'upcoming-today' : ''}`}
+                >
+                  <div className="upcoming-card-header">
+                    <div className="upcoming-card-icon" style={{ color: wish.color }}>
+                      {wish.icon}
+                    </div>
+                    <div className="upcoming-card-info">
+                      <h3 className="upcoming-card-title">{wish.title}</h3>
+                      <div className="upcoming-card-meta">
+                        <span className="upcoming-type-badge" style={{ background: 'rgba(108, 92, 231, 0.15)', color: '#6c5ce7' }}>
+                          愿望
+                        </span>
+                        <span className="muted">{wish.deadline}</span>
+                      </div>
+                    </div>
+                    <div className="upcoming-card-countdown">
+                      {isOverdue ? (
+                        <span className="countdown-today-label" style={{ color: '#ff7675' }}>逾期{Math.abs(daysLeft)}天</span>
+                      ) : (
+                        <span className="countdown-days-label" style={{ color: isUrgent ? '#fdcb6e' : wish.color }}>
+                          {daysLeft}<small>天</small>
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
