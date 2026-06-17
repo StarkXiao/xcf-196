@@ -695,3 +695,88 @@ export interface GiftStats {
   upcomingGifts: GiftPlan[];
   budgetPeriods: BudgetPeriod[];
 }
+
+export type MoodLevel = 'very_bad' | 'bad' | 'neutral' | 'good' | 'excellent';
+
+export interface MoodRecord {
+  id: string;
+  date: string;
+  time: string;
+  mood: MoodLevel;
+  moodScore: number;
+  reportedBy: 'user' | 'partner';
+  note?: string;
+  triggers?: string[];
+  createdAt: string;
+}
+
+export interface ComfortTask {
+  id: string;
+  title: string;
+  description: string;
+  category: 'activity' | 'message' | 'gift' | 'together' | 'rest';
+  icon: string;
+  color: string;
+  duration?: string;
+  moodTarget: MoodLevel[];
+  isCompleted: boolean;
+  completedAt?: string;
+  completedBy?: 'user' | 'partner' | 'both';
+  completedNote?: string;
+  createdAt: string;
+}
+
+export interface AnomalyAlert {
+  id: string;
+  type: 'sudden_drop' | 'continuous_low' | 'partner_low' | 'divergence';
+  level: 'warning' | 'alert' | 'info';
+  title: string;
+  description: string;
+  affectedPerson: 'user' | 'partner' | 'both';
+  relatedRecordIds: string[];
+  detectedAt: string;
+  suggestedAction?: string;
+}
+
+export interface MoodTrendPoint {
+  date: string;
+  periodLabel: string;
+  userAvgScore: number;
+  partnerAvgScore: number;
+  overallAvgScore: number;
+  userCount: number;
+  partnerCount: number;
+  dominantMood: MoodLevel;
+  moodDistribution: Record<MoodLevel, number>;
+}
+
+export interface MoodStats {
+  totalRecords: number;
+  period: string;
+  periodStart: string;
+  periodEnd: string;
+  userAvgScore: number;
+  partnerAvgScore: number;
+  overallAvgScore: number;
+  userMoodDistribution: Record<MoodLevel, number>;
+  partnerMoodDistribution: Record<MoodLevel, number>;
+  overallMoodDistribution: Record<MoodLevel, number>;
+  userTopTriggers: { trigger: string; count: number }[];
+  partnerTopTriggers: { trigger: string; count: number }[];
+  bestDay: { date: string; score: number; mood: MoodLevel } | null;
+  worstDay: { date: string; score: number; mood: MoodLevel } | null;
+  consecutiveGoodDays: number;
+  consecutiveBadDays: number;
+  trend: 'improving' | 'declining' | 'stable';
+  trendDescription: string;
+}
+
+export interface MoodDashboardData {
+  todayUserMood: MoodRecord | null;
+  todayPartnerMood: MoodRecord | null;
+  latestWeekStats: MoodStats;
+  anomalyAlerts: AnomalyAlert[];
+  recommendedTasks: ComfortTask[];
+  recentRecords: MoodRecord[];
+  trend: MoodTrendPoint[];
+}

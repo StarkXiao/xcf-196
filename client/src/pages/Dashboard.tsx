@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi, growthApi, wishlistApi } from '../services/api';
+import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi, growthApi, wishlistApi, moodsApi } from '../services/api';
 import type {
   Pact,
   Checkin,
@@ -17,6 +17,8 @@ import type {
   PeriodUnit,
   WishItem,
   WishStats,
+  MoodDashboardData,
+  MoodLevel,
 } from '../types';
 
 function Dashboard() {
@@ -43,6 +45,7 @@ function Dashboard() {
   const [wishStats, setWishStats] = useState<WishStats | null>(null);
   const [recentWishes, setRecentWishes] = useState<WishItem[]>([]);
   const [upcomingWishReminders, setUpcomingWishReminders] = useState<WishItem[]>([]);
+  const [moodData, setMoodData] = useState<MoodDashboardData | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -54,7 +57,7 @@ function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [stats, statsExtended, checkinStatsData, pacts, resumes, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData, wishStatsData, wishData, wishRemindersData] =
+      const [stats, statsExtended, checkinStatsData, pacts, resumes, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData, wishStatsData, wishData, wishRemindersData, moodDashboard] =
         await Promise.all([
           pactsApi.getStats(),
           pactsApi.getStatsExtended(),
@@ -71,6 +74,7 @@ function Dashboard() {
           wishlistApi.getStats(),
           wishlistApi.findAll(undefined, undefined),
           wishlistApi.getUpcomingReminders(14),
+          moodsApi.getDashboard(),
         ]);
       setPactStats(stats);
       setPactStatsExtended(statsExtended);
@@ -87,6 +91,7 @@ function Dashboard() {
       setWishStats(wishStatsData);
       setRecentWishes(wishData.filter(w => w.status !== 'completed' && w.status !== 'abandoned').slice(0, 4));
       setUpcomingWishReminders(wishRemindersData);
+      setMoodData(moodDashboard);
       loadTrendStats();
     } catch (error) {
       console.error('加载仪表盘数据失败', error);
@@ -132,6 +137,28 @@ function Dashboard() {
       grateful: '🥰',
     };
     return moods[mood] || '😊';
+  };
+
+  const moodLevelEmoji = (level: MoodLevel) => {
+    const emojis: Record<MoodLevel, string> = {
+      very_bad: '😢',
+      bad: '😔',
+      neutral: '😐',
+      good: '😊',
+      excellent: '😍',
+    };
+    return emojis[level] || '😐';
+  };
+
+  const moodLevelColor = (level: MoodLevel) => {
+    const colors: Record<MoodLevel, string> = {
+      very_bad: '#e74c3c',
+      bad: '#e67e22',
+      neutral: '#f1c40f',
+      good: '#2ecc71',
+      excellent: '#9b59b6',
+    };
+    return colors[level] || '#f1c40f';
   };
 
   const handleCelebrateAnniversary = async (item: CountdownItem) => {
@@ -583,6 +610,159 @@ function Dashboard() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {moodData && (
+        <div className="mood-dashboard-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              <span className="section-icon">💗</span>
+              情绪陪伴
+            </h2>
+            <span className="section-subtitle muted">
+              本周平均分 {moodData.latestWeekStats.overallAvgScore.toFixed(1)} · {moodData.latestWeekStats.trendDescription}
+            </span>
+            <Link to="/mood" className="card-link" style={{ marginLeft: 'auto' }}>
+              查看详情 →
+            </Link>
+          </div>
+
+          {moodData.anomalyAlerts.length > 0 && (
+            <div className="mood-alerts-row">
+              {moodData.anomalyAlerts.slice(0, 2).map(alert => (
+                <div
+                  key={alert.id}
+                  className="mood-alert-card card"
+                  style={{
+                    background: alert.level === 'alert' ? 'rgba(231, 76, 60, 0.1)' : alert.level === 'warning' ? 'rgba(241, 196, 15, 0.1)' : 'rgba(52, 152, 219, 0.1)',
+                    borderColor: alert.level === 'alert' ? 'rgba(231, 76, 60, 0.3)' : alert.level === 'warning' ? 'rgba(241, 196, 15, 0.3)' : 'rgba(52, 152, 219, 0.3)',
+                  }}
+                >
+                  <span className="mood-alert-icon">
+                    {alert.level === 'alert' ? '🚨' : alert.level === 'warning' ? '⚠️' : '💡'}
+                  </span>
+                  <div className="mood-alert-content">
+                    <div className="mood-alert-title">{alert.title}</div>
+                    <div className="mood-alert-desc muted">{alert.description}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mood-today-row">
+            <div className="mood-today-card card">
+              <div className="mood-today-header">
+                <span>我的今日心情</span>
+                {moodData.todayUserMood ? (
+                  <span className="mood-tag-done">已记录</span>
+                ) : (
+                  <span className="mood-tag-pending">未记录</span>
+                )}
+              </div>
+              {moodData.todayUserMood ? (
+                <div className="mood-today-display">
+                  <span
+                    className="mood-today-emoji"
+                    style={{ color: moodLevelColor(moodData.todayUserMood.mood) }}
+                  >
+                    {moodLevelEmoji(moodData.todayUserMood.mood)}
+                  </span>
+                  <div>
+                    <div className="mood-today-level" style={{ color: moodLevelColor(moodData.todayUserMood.mood) }}>
+                      {moodData.todayUserMood.mood === 'very_bad' ? '很难过' : moodData.todayUserMood.mood === 'bad' ? '有点低落' : moodData.todayUserMood.mood === 'neutral' ? '一般般' : moodData.todayUserMood.mood === 'good' ? '还不错' : '超开心'}
+                    </div>
+                    {moodData.todayUserMood.note && (
+                      <div className="mood-today-note muted">{moodData.todayUserMood.note}</div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="mood-today-empty">
+                  <Link to="/mood" className="mood-report-link">
+                    <span>➕</span> 记录今天的心情
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <div className="mood-today-card card">
+              <div className="mood-today-header">
+                <span>TA的今日心情</span>
+                {moodData.todayPartnerMood ? (
+                  <span className="mood-tag-done">已记录</span>
+                ) : (
+                  <span className="mood-tag-pending">未记录</span>
+                )}
+              </div>
+              {moodData.todayPartnerMood ? (
+                <div className="mood-today-display">
+                  <span
+                    className="mood-today-emoji"
+                    style={{ color: moodLevelColor(moodData.todayPartnerMood.mood) }}
+                  >
+                    {moodLevelEmoji(moodData.todayPartnerMood.mood)}
+                  </span>
+                  <div>
+                    <div className="mood-today-level" style={{ color: moodLevelColor(moodData.todayPartnerMood.mood) }}>
+                      {moodData.todayPartnerMood.mood === 'very_bad' ? '很难过' : moodData.todayPartnerMood.mood === 'bad' ? '有点低落' : moodData.todayPartnerMood.mood === 'neutral' ? '一般般' : moodData.todayPartnerMood.mood === 'good' ? '还不错' : '超开心'}
+                    </div>
+                    {moodData.todayPartnerMood.note && (
+                      <div className="mood-today-note muted">{moodData.todayPartnerMood.note}</div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="mood-today-empty">
+                  <span className="mood-empty-hint muted">TA今天还没记录心情</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mood-stats-card card">
+              <div className="mood-stats-header">本周统计</div>
+              <div className="mood-stats-grid">
+                <div className="mood-stat-mini">
+                  <span className="mood-stat-num" style={{ color: '#6c5ce7' }}>{moodData.latestWeekStats.overallAvgScore.toFixed(1)}</span>
+                  <span className="mood-stat-label muted">平均分</span>
+                </div>
+                <div className="mood-stat-mini">
+                  <span className="mood-stat-num" style={{ color: '#00b894' }}>{moodData.latestWeekStats.consecutiveGoodDays}</span>
+                  <span className="mood-stat-label muted">连续好心情</span>
+                </div>
+                <div className="mood-stat-mini">
+                  <span className="mood-stat-num" style={{ color: '#fd79a8' }}>{moodData.latestWeekStats.totalRecords}</span>
+                  <span className="mood-stat-label muted">记录次数</span>
+                </div>
+              </div>
+              <div className={`mood-trend-tag trend-${moodData.latestWeekStats.trend}`}>
+                {moodData.latestWeekStats.trend === 'improving' ? '📈 情绪上升中' : moodData.latestWeekStats.trend === 'declining' ? '📉 情绪需关注' : '➡️ 情绪稳定'}
+              </div>
+            </div>
+          </div>
+
+          {moodData.recommendedTasks.length > 0 && (
+            <div className="mood-tasks-preview">
+              <div className="mood-tasks-title">💝 温馨小建议</div>
+              <div className="mood-tasks-row">
+                {moodData.recommendedTasks.slice(0, 3).map(task => (
+                  <div key={task.id} className="mood-task-mini card">
+                    <span className="mood-task-icon" style={{ color: task.color }}>{task.icon}</span>
+                    <div className="mood-task-info">
+                      <div className="mood-task-title">{task.title}</div>
+                      <div className="mood-task-desc muted">{task.description}</div>
+                    </div>
+                    {task.isCompleted ? (
+                      <span className="mood-task-done">✓</span>
+                    ) : (
+                      <Link to="/mood" className="mood-task-go">→</Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1453,6 +1633,232 @@ function Dashboard() {
         .card-link {
           font-size: 13px;
           color: var(--primary);
+        }
+
+        .mood-dashboard-section {
+          margin-bottom: 32px;
+        }
+
+        .mood-alerts-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .mood-alert-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 14px 16px;
+          border: 1px solid;
+          border-radius: 12px;
+        }
+
+        .mood-alert-icon {
+          font-size: 22px;
+          flex-shrink: 0;
+        }
+
+        .mood-alert-title {
+          font-weight: 600;
+          font-size: 14px;
+          margin-bottom: 2px;
+        }
+
+        .mood-alert-desc {
+          font-size: 12px;
+        }
+
+        .mood-today-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+
+        .mood-today-card {
+          padding: 18px;
+        }
+
+        .mood-today-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 14px;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .mood-tag-done {
+          font-size: 11px;
+          padding: 2px 10px;
+          background: rgba(0, 184, 148, 0.15);
+          color: #00b894;
+          border-radius: 999px;
+        }
+
+        .mood-tag-pending {
+          font-size: 11px;
+          padding: 2px 10px;
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--text-muted);
+          border-radius: 999px;
+        }
+
+        .mood-today-display {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .mood-today-emoji {
+          font-size: 40px;
+        }
+
+        .mood-today-level {
+          font-size: 16px;
+          font-weight: 600;
+          margin-bottom: 2px;
+        }
+
+        .mood-today-note {
+          font-size: 12px;
+          line-height: 1.4;
+        }
+
+        .mood-today-empty {
+          padding: 8px 0;
+        }
+
+        .mood-report-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--primary);
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .mood-empty-hint {
+          font-size: 13px;
+        }
+
+        .mood-stats-card {
+          padding: 18px;
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.06), rgba(253, 121, 168, 0.06));
+          border: 1px solid rgba(253, 121, 168, 0.15);
+        }
+
+        .mood-stats-header {
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 14px;
+        }
+
+        .mood-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .mood-stat-mini {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+        }
+
+        .mood-stat-num {
+          font-size: 22px;
+          font-weight: 700;
+        }
+
+        .mood-stat-label {
+          font-size: 11px;
+        }
+
+        .mood-trend-tag {
+          text-align: center;
+          padding: 6px 10px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .mood-trend-tag.trend-improving {
+          background: rgba(0, 184, 148, 0.12);
+          color: #00b894;
+        }
+
+        .mood-trend-tag.trend-declining {
+          background: rgba(231, 76, 60, 0.12);
+          color: #e74c3c;
+        }
+
+        .mood-trend-tag.trend-stable {
+          background: rgba(108, 92, 231, 0.12);
+          color: #6c5ce7;
+        }
+
+        .mood-tasks-preview {
+          margin-top: 8px;
+        }
+
+        .mood-tasks-title {
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 12px;
+        }
+
+        .mood-tasks-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 10px;
+        }
+
+        .mood-task-mini {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 14px;
+        }
+
+        .mood-task-icon {
+          font-size: 22px;
+          flex-shrink: 0;
+        }
+
+        .mood-task-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .mood-task-mini .mood-task-title {
+          font-size: 13px;
+          font-weight: 600;
+          margin-bottom: 2px;
+        }
+
+        .mood-task-mini .mood-task-desc {
+          font-size: 11px;
+          line-height: 1.3;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .mood-task-done {
+          color: #00b894;
+          font-weight: 600;
+          font-size: 16px;
+        }
+
+        .mood-task-go {
+          color: var(--primary);
+          font-weight: 600;
+          font-size: 16px;
         }
 
         .pact-item {

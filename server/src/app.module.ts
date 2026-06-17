@@ -11,6 +11,7 @@ import { MonthlyReviewModule } from './monthly-review/monthly-review.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { TravelPlansModule } from './travel-plans/travel-plans.module';
 import { GiftPlansModule } from './gift-plans/gift-plans.module';
+import { MoodsModule } from './moods/moods.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { GiftPlansModule } from './gift-plans/gift-plans.module';
     WishlistModule,
     TravelPlansModule,
     GiftPlansModule,
+    MoodsModule,
   ],
 })
 export class AppModule {}

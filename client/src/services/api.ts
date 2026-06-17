@@ -42,6 +42,12 @@ import type {
   GiftPlan,
   GiftItem,
   GiftStats,
+  MoodRecord,
+  ComfortTask,
+  AnomalyAlert,
+  MoodStats,
+  MoodDashboardData,
+  MoodLevel,
 } from '../types';
 
 const api = axios.create({
@@ -340,4 +346,30 @@ export const giftPlansApi = {
     api.post<GiftPlan>(`/gift-plans/${id}/link-anniversary/${anniversaryId}`).then(res => res.data),
   unlinkFromAnniversary: (id: string) =>
     api.post<GiftPlan>(`/gift-plans/${id}/unlink-anniversary`).then(res => res.data),
+};
+
+export const moodsApi = {
+  findAll: (startDate?: string, endDate?: string, reportedBy?: string) =>
+    api.get<MoodRecord[]>('/moods', { params: { startDate, endDate, reportedBy } }).then(res => res.data),
+  findOne: (id: string) => api.get<MoodRecord>(`/moods/${id}`).then(res => res.data),
+  create: (data: {
+    mood: MoodLevel;
+    moodScore: number;
+    reportedBy: 'user' | 'partner';
+    note?: string;
+    triggers?: string[];
+  }) => api.post<MoodRecord>('/moods', data).then(res => res.data),
+  remove: (id: string) => api.delete(`/moods/${id}`),
+  getToday: () => api.get<{ user: MoodRecord | null; partner: MoodRecord | null }>('/moods/today').then(res => res.data),
+  getStats: (period?: string, periods?: number) =>
+    api.get<MoodStats>('/moods/stats', { params: { period, periods } }).then(res => res.data),
+  getAnomalyAlerts: () => api.get<AnomalyAlert[]>('/moods/anomaly-alerts').then(res => res.data),
+  getComfortTasks: () => api.get<ComfortTask[]>('/moods/comfort-tasks').then(res => res.data),
+  recommendComfortTasks: (targetMood?: MoodLevel) =>
+    api.get<ComfortTask[]>('/moods/comfort-tasks/recommend', { params: { targetMood } }).then(res => res.data),
+  completeComfortTask: (id: string, data?: {
+    completedBy?: 'user' | 'partner' | 'both';
+    completedNote?: string;
+  }) => api.post<ComfortTask>(`/moods/comfort-tasks/${id}/complete`, data || {}).then(res => res.data),
+  getDashboard: () => api.get<MoodDashboardData>('/moods/dashboard').then(res => res.data),
 };

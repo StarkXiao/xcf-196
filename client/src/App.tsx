@@ -11,6 +11,7 @@ import Wishlist from './pages/Wishlist';
 import BuildingMap from './pages/BuildingMap';
 import TravelPlans from './pages/TravelPlans';
 import GiftPlans from './pages/GiftPlans';
+import MoodCompanion from './pages/MoodCompanion';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="pacts" element={<Pacts />} />
         <Route path="checkins" element={<Checkins />} />
+        <Route path="mood" element={<MoodCompanion />} />
         <Route path="wishlist" element={<Wishlist />} />
         <Route path="building-map" element={<BuildingMap />} />
         <Route path="travel-plans" element={<TravelPlans />} />
