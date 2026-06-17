@@ -68,7 +68,7 @@ export interface Reminder {
   id: string;
   title: string;
   description: string;
-  type: 'pact' | 'anniversary' | 'custom' | 'wish';
+  type: 'pact' | 'anniversary' | 'custom' | 'wish' | 'reading';
   date: string;
   time: string;
   repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -78,6 +78,7 @@ export interface Reminder {
   priority?: 'critical' | 'high' | 'medium' | 'low';
   isAggregated?: boolean;
   aggregatedCount?: number;
+  metadata?: Record<string, any>;
 }
 
 export interface TimelineEvent {
@@ -475,6 +476,30 @@ export const mockReminders: Reminder[] = [
     isActive: true,
     wishId: 'wish-4',
     priority: 'medium',
+  },
+  {
+    id: 'reminder-reading-1',
+    title: '📖 共读提醒：小王子',
+    description: '《小王子》目标日期 2026-07-01，当前进度 56%，每天 21:00 提醒阅读',
+    type: 'reading',
+    date: '2026-06-30',
+    time: '21:00',
+    repeat: 'daily',
+    isActive: true,
+    priority: 'high',
+    metadata: { readingPlanId: 'reading-1' },
+  },
+  {
+    id: 'reminder-reading-3',
+    title: '📖 共读提醒：百年孤独',
+    description: '《百年孤独》目标日期 2026-10-01，当前进度 0%，每天 21:30 提醒阅读',
+    type: 'reading',
+    date: '2026-09-29',
+    time: '21:30',
+    repeat: 'daily',
+    isActive: true,
+    priority: 'high',
+    metadata: { readingPlanId: 'reading-3' },
   },
 ];
 

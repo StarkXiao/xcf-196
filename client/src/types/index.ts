@@ -78,7 +78,7 @@ export interface Reminder {
   id: string;
   title: string;
   description: string;
-  type: 'pact' | 'anniversary' | 'custom' | 'wish';
+  type: 'pact' | 'anniversary' | 'custom' | 'wish' | 'reading';
   date: string;
   time: string;
   repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -88,6 +88,7 @@ export interface Reminder {
   priority?: 'critical' | 'high' | 'medium' | 'low';
   isAggregated?: boolean;
   aggregatedCount?: number;
+  metadata?: Record<string, any>;
 }
 
 export interface TimelineEvent {

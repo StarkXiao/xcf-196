@@ -3,9 +3,10 @@ import { ReadingPlansService } from './reading-plans.service';
 import { ReadingPlansController } from './reading-plans.controller';
 import { TimelineModule } from '../timeline/timeline.module';
 import { GrowthModule } from '../growth/growth.module';
+import { RemindersModule } from '../reminders/reminders.module';
 
 @Module({
-  imports: [forwardRef(() => TimelineModule), forwardRef(() => GrowthModule)],
+  imports: [forwardRef(() => TimelineModule), forwardRef(() => GrowthModule), forwardRef(() => RemindersModule)],
   controllers: [ReadingPlansController],
   providers: [ReadingPlansService],
   exports: [ReadingPlansService],

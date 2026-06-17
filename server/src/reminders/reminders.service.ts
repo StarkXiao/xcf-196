@@ -35,6 +35,7 @@ export class RemindersService {
     anniversary: 'critical',
     pact: 'high',
     wish: 'high',
+    reading: 'high',
     custom: 'medium',
   };
 
@@ -123,6 +124,9 @@ export class RemindersService {
     }
     if (reminder.type === 'wish') {
       return notifications.pactReminder !== false;
+    }
+    if (reminder.type === 'reading') {
+      return notifications.dailyReminder !== false;
     }
     if (reminder.type === 'custom') {
       return notifications.dailyReminder !== false;

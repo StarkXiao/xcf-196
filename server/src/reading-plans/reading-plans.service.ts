@@ -16,6 +16,7 @@ import {
 } from '../data/seed';
 import { TimelineService } from '../timeline/timeline.service';
 import { GrowthService } from '../growth/growth.service';
+import { RemindersService } from '../reminders/reminders.service';
 
 @Injectable()
 export class ReadingPlansService {
@@ -30,6 +31,8 @@ export class ReadingPlansService {
     private readonly timelineService: TimelineService,
     @Inject(forwardRef(() => GrowthService))
     private readonly growthService: GrowthService,
+    @Inject(forwardRef(() => RemindersService))
+    private readonly remindersService: RemindersService,
   ) {}
 
   findAll(status?: string, category?: string): ReadingPlan[] {
@@ -119,7 +122,71 @@ export class ReadingPlansService {
       },
     });
 
+    this.ensureReadingReminder(newPlan);
+
     return newPlan;
+  }
+
+  private ensureReadingReminder(plan: ReadingPlan): void {
+    if (!plan.targetDate || !plan.reminderEnabled) {
+      this.deactivateReadingReminder(plan.id);
+      return;
+    }
+    try {
+      const reminderDate = this.getReminderDate(plan.targetDate, plan.reminderDaysBefore);
+      const today = new Date().toISOString().split('T')[0];
+      if (reminderDate < today) return;
+
+      const existingReminders = this.remindersService.findAll(true);
+      const existing = existingReminders.find(
+        (r: any) => r.metadata?.readingPlanId === plan.id && r.type === 'reading',
+      );
+      const progressPct = Math.max(plan.userProgress, plan.partnerProgress);
+      const description = `《${plan.title}》目标日期 ${plan.targetDate}，当前进度 ${progressPct}%，每天 ${plan.reminderTime} 提醒阅读`;
+
+      if (existing) {
+        this.remindersService.update(existing.id, {
+          title: `📖 共读提醒：${plan.title}`,
+          description,
+          date: reminderDate,
+          time: plan.reminderTime,
+        });
+      } else {
+        this.remindersService.create({
+          title: `📖 共读提醒：${plan.title}`,
+          description,
+          type: 'reading',
+          date: reminderDate,
+          time: plan.reminderTime,
+          repeat: 'daily',
+          isActive: true,
+          priority: 'high',
+          metadata: { readingPlanId: plan.id },
+        } as any);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private deactivateReadingReminder(planId: string): void {
+    try {
+      const reminders = this.remindersService.findAll(true);
+      const readingReminders = reminders.filter(
+        (r: any) => r.metadata?.readingPlanId === planId && r.type === 'reading',
+      );
+      readingReminders.forEach(r => {
+        this.remindersService.update(r.id, { isActive: false });
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private getReminderDate(targetDate: string, daysBefore: number): string {
+    const date = new Date(targetDate);
+    date.setDate(date.getDate() - daysBefore);
+    return date.toISOString().split('T')[0];
   }
 
   private getMilestoneTitle(chapter: number, total: number): string {
@@ -184,6 +251,13 @@ export class ReadingPlansService {
       if (completeMilestone && !completeMilestone.achieved) {
         this.achieveMilestone(completeMilestone.id, 'both');
       }
+      this.deactivateReadingReminder(id);
+    } else {
+      this.ensureReadingReminder(this.plans[idx]);
+    }
+
+    if (data.status === 'abandoned' || data.status === 'paused') {
+      this.deactivateReadingReminder(id);
     }
 
     return this.plans[idx];
@@ -192,6 +266,8 @@ export class ReadingPlansService {
   remove(id: string): boolean {
     const planIdx = this.plans.findIndex(p => p.id === id);
     if (planIdx === -1) return false;
+
+    this.deactivateReadingReminder(id);
 
     this.plans.splice(planIdx, 1);
     this.chapters = this.chapters.filter(c => c.planId !== id);

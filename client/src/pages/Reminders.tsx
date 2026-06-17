@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { remindersApi, pactsApi } from '../services/api';
 import type { Reminder, Pact } from '../types';
 
@@ -15,12 +16,15 @@ const typeLabels: Record<string, string> = {
   anniversary: '纪念日',
   custom: '自定义',
   wish: '愿望提醒',
+  reading: '共读提醒',
 };
 
 function Reminders() {
+  const navigate = useNavigate();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [pacts, setPacts] = useState<Pact[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<{
     title: string;
@@ -42,7 +46,7 @@ function Reminders() {
 
   useEffect(() => {
     loadData();
-  }, [filter]);
+  }, [filter, typeFilter]);
 
   const loadData = async () => {
     try {
@@ -50,7 +54,11 @@ function Reminders() {
         remindersApi.findAll(filter === 'all' ? undefined : filter === 'active'),
         pactsApi.findAll('active'),
       ]);
-      setReminders(remindersData);
+      let filtered = remindersData;
+      if (typeFilter !== 'all') {
+        filtered = filtered.filter(r => r.type === typeFilter);
+      }
+      setReminders(filtered);
       setPacts(pactsData);
     } catch (error) {
       console.error('加载提醒失败', error);
@@ -133,6 +141,24 @@ function Reminders() {
             </button>
           ))}
         </div>
+        <div className="tab-group" style={{ marginTop: '8px' }}>
+          {[
+            { value: 'all', label: '全部类型' },
+            { value: 'reading', label: '📖 共读' },
+            { value: 'pact', label: '✨ 约定' },
+            { value: 'anniversary', label: '💕 纪念日' },
+            { value: 'wish', label: '💫 愿望' },
+            { value: 'custom', label: '📌 自定义' },
+          ].map(tab => (
+            <button
+              key={tab.value}
+              className={`tab tab-small ${typeFilter === tab.value ? 'active' : ''}`}
+              onClick={() => setTypeFilter(tab.value)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="reminders-list">
@@ -142,7 +168,7 @@ function Reminders() {
             <div key={reminder.id} className={`reminder-card card type-${reminder.type} ${!reminder.isActive ? 'inactive' : ''}`}>
               <div className="reminder-card-header">
                 <div className="reminder-icon">
-                  {reminder.type === 'anniversary' ? '💕' : reminder.type === 'pact' ? '✨' : reminder.type === 'wish' ? '💫' : '📌'}
+                  {reminder.type === 'anniversary' ? '💕' : reminder.type === 'pact' ? '✨' : reminder.type === 'wish' ? '💫' : reminder.type === 'reading' ? '📖' : '📌'}
                 </div>
                 <div className="reminder-info">
                   <h3 className="reminder-title">{reminder.title}</h3>
@@ -177,6 +203,14 @@ function Reminders() {
                   <div className="reminder-pact">
                     <span style={{ color: pact.color }}>{pact.icon}</span>
                     <span className="muted">{pact.title}</span>
+                  </div>
+                )}
+                {reminder.type === 'reading' && reminder.metadata?.readingPlanId && (
+                  <div
+                    className="reminder-reading-link"
+                    onClick={() => navigate('/reading-plans')}
+                  >
+                    📚 查看共读计划
                   </div>
                 )}
               </div>
@@ -450,6 +484,30 @@ function Reminders() {
         .reminder-card.type-custom .badge-type {
           background: rgba(116, 185, 255, 0.15);
           color: #74b9ff;
+        }
+
+        .reminder-card.type-reading .reminder-icon,
+        .reminder-card.type-reading .badge-type {
+          background: rgba(108, 92, 231, 0.15);
+          color: #6c5ce7;
+        }
+
+        .reminder-reading-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          color: #6c5ce7;
+          margin-top: 8px;
+          padding: 4px 10px;
+          background: rgba(108, 92, 231, 0.08);
+          border-radius: 6px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .reminder-reading-link:hover {
+          background: rgba(108, 92, 231, 0.16);
         }
 
         .reminder-actions {

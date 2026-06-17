@@ -1609,6 +1609,7 @@ function AddRecordModal({
   onClose: () => void;
   onSave: (data: Partial<LedgerRecord>) => void;
 }) {
+  const formatAmount = (amount: number) => amount.toFixed(2);
   const [title, setTitle] = useState(record?.title || '');
   const [amount, setAmount] = useState(record?.amount?.toString() || '');
   const [type, setType] = useState<'expense' | 'income'>(record?.type || 'expense');
