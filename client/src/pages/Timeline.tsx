@@ -495,7 +495,72 @@ function Timeline() {
         </div>
       ) : (
         <div className="timeline-container">
-          {groupByYear(events).map(([year, yearEvents]) => (
+          {(typeFilter !== 'all' || categoryFilter !== 'all' || checkedByFilter !== 'all' || dateRangeFilter !== 'all') && (
+            <div className="timeline-filter-banner card">
+              <div className="filter-banner-tags">
+                {typeFilter !== 'all' && (
+                  <span className="filter-banner-tag">
+                    🎯 {typeLabels[typeFilter] || typeFilter}
+                  </span>
+                )}
+                {categoryFilter !== 'all' && (
+                  <span className="filter-banner-tag">
+                    📂 {({ daily: '每日', weekly: '每周', monthly: '每月', special: '特别' } as any)[categoryFilter]}
+                  </span>
+                )}
+                {checkedByFilter !== 'all' && (
+                  <span className="filter-banner-tag">
+                    👥 {({ user: '我', partner: 'TA', both: '双方' } as any)[checkedByFilter]}
+                  </span>
+                )}
+                {dateRangeFilter !== 'all' && (
+                  <span className="filter-banner-tag">
+                    📅 {({ week: '近1周', month: '近1月', quarter: '近3月' } as any)[dateRangeFilter]}
+                  </span>
+                )}
+              </div>
+              <div className="filter-banner-meta">
+                <span className="filter-banner-count muted">{events.length} 条记录</span>
+                <button
+                  className="filter-banner-reset"
+                  onClick={() => {
+                    setTypeFilter('all');
+                    setCategoryFilter('all');
+                    setCheckedByFilter('all');
+                    setDateRangeFilter('all');
+                  }}
+                >
+                  ✕ 清除全部
+                </button>
+              </div>
+            </div>
+          )}
+
+          {events.length === 0 ? (
+            <div className="empty-state full card">
+              <div className="empty-icon">🔍</div>
+              <h3>没有找到匹配的事件</h3>
+              <p className="muted">
+                {typeFilter !== 'all' || categoryFilter !== 'all' || checkedByFilter !== 'all' || dateRangeFilter !== 'all'
+                  ? '尝试调整筛选条件，或者清除筛选查看全部事件'
+                  : '还没有任何时间线事件，开始创建你们的第一个约定吧'}
+              </p>
+              {(typeFilter !== 'all' || categoryFilter !== 'all' || checkedByFilter !== 'all' || dateRangeFilter !== 'all') && (
+                <button
+                  className="btn btn-primary mt-20"
+                  onClick={() => {
+                    setTypeFilter('all');
+                    setCategoryFilter('all');
+                    setCheckedByFilter('all');
+                    setDateRangeFilter('all');
+                  }}
+                >
+                  清除全部筛选
+                </button>
+              )}
+            </div>
+          ) : (
+            groupByYear(events).map(([year, yearEvents]) => (
             <div key={year} className="timeline-year">
               <div className="year-badge">
                 <span>{year}</span>
@@ -552,15 +617,7 @@ function Timeline() {
                 ))}
               </div>
             </div>
-          ))}
-
-          {events.length === 0 && (
-            <div className="empty-state full card">
-              <div className="empty-icon">🕐</div>
-              <h3>时间线还是空的</h3>
-              <p className="muted">创建约定、打卡记录，让时间线丰富起来吧</p>
-            </div>
-          )}
+          )))}
         </div>
       )}
 
@@ -1690,6 +1747,64 @@ function Timeline() {
           .filter-icon {
             display: none;
           }
+        }
+
+        .timeline-filter-banner {
+          padding: 16px 18px;
+          margin-bottom: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          border: 1px solid rgba(108, 92, 231, 0.15);
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.04), rgba(162, 155, 254, 0.02));
+        }
+
+        .filter-banner-tags {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .filter-banner-tag {
+          padding: 6px 12px;
+          background: rgba(108, 92, 231, 0.12);
+          border: 1px solid rgba(108, 92, 231, 0.25);
+          color: var(--primary-color);
+          border-radius: 18px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .filter-banner-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-top: 10px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .filter-banner-count {
+          font-size: 12px;
+        }
+
+        .filter-banner-reset {
+          padding: 6px 14px;
+          border: none;
+          background: rgba(253, 121, 168, 0.1);
+          color: #fd79a8;
+          font-size: 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+
+        .filter-banner-reset:hover {
+          background: rgba(253, 121, 168, 0.18);
+        }
+
+        .mt-20 {
+          margin-top: 20px;
         }
       `}</style>
     </div>

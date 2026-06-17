@@ -41,6 +41,7 @@ function Checkins() {
   const [stats, setStats] = useState<CheckinStats | null>(null);
   const [trendStats, setTrendStats] = useState<TrendStats | null>(null);
   const [trendPeriod, setTrendPeriod] = useState<PeriodUnit>('week');
+  const [trendCategory, setTrendCategory] = useState<string>('all');
   const [trendCheckedBy, setTrendCheckedBy] = useState<string>('all');
   const [missedCheckins, setMissedCheckins] = useState<MissedCheckinPact[]>([]);
   const [selectedPact, setSelectedPact] = useState<string>('all');
@@ -65,18 +66,21 @@ function Checkins() {
 
   useEffect(() => {
     loadData();
-  }, [selectedPact]);
+  }, [selectedPact, trendCategory, trendCheckedBy]);
 
   useEffect(() => {
     loadTrendStats();
-  }, [selectedPact, trendPeriod, trendCheckedBy]);
+  }, [selectedPact, trendPeriod, trendCategory, trendCheckedBy]);
 
   const loadData = async () => {
     try {
+      const pactId = selectedPact === 'all' ? undefined : selectedPact;
+      const category = trendCategory === 'all' ? undefined : trendCategory;
+      const checkedBy = trendCheckedBy === 'all' ? undefined : trendCheckedBy;
       const [pactsData, checkinsData, statsData, missedData] = await Promise.all([
         pactsApi.findAll('active'),
-        checkinsApi.findAll(selectedPact === 'all' ? undefined : selectedPact),
-        checkinsApi.getStats(selectedPact === 'all' ? undefined : selectedPact),
+        checkinsApi.findAll(pactId, undefined, undefined, category, checkedBy),
+        checkinsApi.getStats(pactId),
         checkinsApi.getMissed(),
       ]);
       setPacts(pactsData);
@@ -96,9 +100,10 @@ function Checkins() {
   const loadTrendStats = async () => {
     try {
       const pactId = selectedPact === 'all' ? undefined : selectedPact;
+      const category = trendCategory === 'all' ? undefined : trendCategory;
       const checkedBy = trendCheckedBy === 'all' ? undefined : (trendCheckedBy as 'user' | 'partner' | 'both');
       const periods = trendPeriod === 'day' ? 14 : trendPeriod === 'week' ? 8 : 6;
-      const data = await checkinsApi.getTrendStats(trendPeriod, periods, pactId, undefined, checkedBy);
+      const data = await checkinsApi.getTrendStats(trendPeriod, periods, pactId, category, checkedBy);
       setTrendStats(data);
     } catch (error) {
       console.error('加载趋势统计失败', error);
@@ -306,6 +311,26 @@ function Checkins() {
               </div>
             </div>
             <div className="filter-group">
+              <label className="filter-label">分类</label>
+              <div className="filter-tabs">
+                {[
+                  { value: 'all', label: '全部' },
+                  { value: 'daily', label: '每日' },
+                  { value: 'weekly', label: '每周' },
+                  { value: 'monthly', label: '每月' },
+                  { value: 'special', label: '特别' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    className={`filter-tab ${trendCategory === opt.value ? 'active' : ''}`}
+                    onClick={() => setTrendCategory(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="filter-group">
               <label className="filter-label">双方</label>
               <div className="filter-tabs">
                 {[
@@ -324,6 +349,17 @@ function Checkins() {
                 ))}
               </div>
             </div>
+            {(trendCategory !== 'all' || trendCheckedBy !== 'all') && (
+              <button
+                className="filter-clear-btn"
+                onClick={() => {
+                  setTrendCategory('all');
+                  setTrendCheckedBy('all');
+                }}
+              >
+                ✕ 清除
+              </button>
+            )}
           </div>
 
           <div className="trend-summary-grid">
@@ -494,6 +530,25 @@ function Checkins() {
             </button>
           ))}
         </div>
+        {(trendCategory !== 'all' || trendCheckedBy !== 'all') && (
+          <div className="filter-active-hint">
+            <span className="filter-active-tags">
+              {trendCategory !== 'all' && (
+                <span className="filter-active-tag">
+                  📂 {({ daily: '每日', weekly: '每周', monthly: '每月', special: '特别' } as any)[trendCategory]}
+                </span>
+              )}
+              {trendCheckedBy !== 'all' && (
+                <span className="filter-active-tag">
+                  👥 {({ user: '我', partner: 'TA', both: '双方' } as any)[trendCheckedBy]}
+                </span>
+              )}
+            </span>
+            <span className="filter-count muted">
+              共 {checkins.length} 条记录
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="checkins-timeline">
@@ -1881,6 +1936,55 @@ function Checkins() {
           box-shadow: 0 2px 8px rgba(108, 92, 231, 0.2);
         }
 
+        .filter-clear-btn {
+          margin-left: auto;
+          padding: 6px 14px;
+          border: none;
+          background: rgba(253, 121, 168, 0.1);
+          color: #fd79a8;
+          font-size: 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+
+        .filter-clear-btn:hover {
+          background: rgba(253, 121, 168, 0.18);
+        }
+
+        .filter-active-hint {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding-top: 12px;
+          margin-top: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          flex-wrap: wrap;
+          width: 100%;
+        }
+
+        .filter-active-tags {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .filter-active-tag {
+          padding: 4px 10px;
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(162, 155, 254, 0.08));
+          border: 1px solid rgba(108, 92, 231, 0.25);
+          color: var(--primary-color);
+          border-radius: 16px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+
+        .filter-count {
+          font-size: 12px;
+          margin-left: auto;
+        }
+
         .trend-summary-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -2062,6 +2166,18 @@ function Checkins() {
             flex-direction: column;
             align-items: flex-start;
             gap: 14px;
+          }
+          .filter-clear-btn {
+            margin-left: 0;
+            align-self: flex-end;
+          }
+          .filter-active-hint {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+          }
+          .filter-count {
+            margin-left: 0;
           }
         }
       `}</style>
