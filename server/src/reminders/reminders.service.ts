@@ -170,7 +170,7 @@ export class RemindersService {
       pactId: data.pactId,
       wishId: data.wishId,
       priority: data.priority,
-      metadata: data.metadata,
+      metadata: (data as any).metadata,
     } as any;
     this.reminders.push(newReminder);
     return newReminder;

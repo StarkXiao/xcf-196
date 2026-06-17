@@ -2,43 +2,50 @@ import { Controller, Get, Post, Body, Param, Delete, Query } from '@nestjs/commo
 import { MoodsService } from './moods.service';
 import { CreateMoodDto } from './dto/create-mood.dto';
 import { CompleteComfortTaskDto } from './dto/complete-comfort-task.dto';
+import { MoodLevel } from './entities/mood-record.entity';
 
 @Controller('api/moods')
 export class MoodsController {
   constructor(private readonly moodsService: MoodsService) {}
 
-  @Get()
-  findAll(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('reportedBy') reportedBy?: string,
-  ) {
-    return this.moodsService.findAll(startDate, endDate, reportedBy);
-  }
-
-  @Get('stats')
-  getStats() {
-    return this.moodsService.getStats();
+  @Get('dashboard')
+  getDashboard() {
+    return this.moodsService.getDashboard();
   }
 
   @Get('today')
-  getTodayMood(@Query('reportedBy') reportedBy?: string) {
-    return this.moodsService.getTodayMood(reportedBy);
+  getTodayMood() {
+    return this.moodsService.getTodayMood();
   }
 
-  @Get('anomalies')
+  @Get('stats')
+  getStats(
+    @Query('period') period?: string,
+    @Query('periods') periods?: string,
+  ) {
+    const p = period || 'week';
+    const n = periods ? parseInt(periods, 10) : 1;
+    return this.moodsService.getStats(p, n);
+  }
+
+  @Get('trend')
+  getTrend(
+    @Query('period') period?: string,
+    @Query('periods') periods?: string,
+  ) {
+    const p = (period as 'day' | 'week' | 'month') || 'week';
+    const n = periods ? parseInt(periods, 10) : 4;
+    return this.moodsService.getTrendStats(p, n);
+  }
+
+  @Get('anomaly-alerts')
   getAnomalyAlerts() {
     return this.moodsService.getAnomalyAlerts();
   }
 
-  @Get('trend')
-  getTrendStats(
-    @Query('period') period?: string,
-    @Query('periods') periods?: string,
-  ) {
-    const periodUnit = (period as 'day' | 'week' | 'month') || 'week';
-    const periodsNum = periods ? parseInt(periods, 10) : 4;
-    return this.moodsService.getTrendStats(periodUnit, periodsNum);
+  @Get('comfort-tasks/recommend')
+  recommendComfortTasks(@Query('targetMood') targetMood?: MoodLevel) {
+    return this.moodsService.recommendComfortTasks(targetMood);
   }
 
   @Get('comfort-tasks')
@@ -54,14 +61,23 @@ export class MoodsController {
     return this.moodsService.completeComfortTask(taskId, dto);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.moodsService.findOne(id);
+  @Get()
+  findAll(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('reportedBy') reportedBy?: string,
+  ) {
+    return this.moodsService.findAll(startDate, endDate, reportedBy);
   }
 
   @Post()
   create(@Body() createMoodDto: CreateMoodDto) {
     return this.moodsService.create(createMoodDto);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.moodsService.findOne(id);
   }
 
   @Delete(':id')

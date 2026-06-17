@@ -48,6 +48,7 @@ import type {
   MoodStats,
   MoodDashboardData,
   MoodLevel,
+  MoodTrendPoint,
 } from '../types';
 
 const api = axios.create({
@@ -363,8 +364,11 @@ export const moodsApi = {
   getToday: () => api.get<{ user: MoodRecord | null; partner: MoodRecord | null }>('/moods/today').then(res => res.data),
   getStats: (period?: string, periods?: number) =>
     api.get<MoodStats>('/moods/stats', { params: { period, periods } }).then(res => res.data),
+  getTrend: (period?: string, periods?: number) =>
+    api.get<MoodTrendPoint[]>('/moods/trend', { params: { period, periods } }).then(res => res.data),
   getAnomalyAlerts: () => api.get<AnomalyAlert[]>('/moods/anomaly-alerts').then(res => res.data),
-  getComfortTasks: () => api.get<ComfortTask[]>('/moods/comfort-tasks').then(res => res.data),
+  getComfortTasks: (includeCompleted?: boolean) =>
+    api.get<ComfortTask[]>('/moods/comfort-tasks', { params: { includeCompleted } }).then(res => res.data),
   recommendComfortTasks: (targetMood?: MoodLevel) =>
     api.get<ComfortTask[]>('/moods/comfort-tasks/recommend', { params: { targetMood } }).then(res => res.data),
   completeComfortTask: (id: string, data?: {

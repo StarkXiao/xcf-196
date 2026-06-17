@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { moodsApi } from '../services/api';
-import type { MoodRecord, ComfortTask, AnomalyAlert, MoodDashboardData, MoodLevel } from '../types';
+import type { MoodRecord, ComfortTask, AnomalyAlert, MoodDashboardData, MoodLevel, MoodStats, MoodTrendPoint } from '../types';
 
 const moodOptions: { level: MoodLevel; emoji: string; label: string; score: number; color: string }[] = [
   { level: 'very_bad', emoji: '😢', label: '很难过', score: 1, color: '#e74c3c' },
@@ -38,6 +38,9 @@ function MoodCompanion() {
   const [reportFor, setReportFor] = useState<'user' | 'partner'>('user');
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'trend' | 'tasks'>('today');
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('week');
+  const [trendStats, setTrendStats] = useState<MoodStats | null>(null);
+  const [trendData, setTrendData] = useState<MoodTrendPoint[]>([]);
+  const [allComfortTasks, setAllComfortTasks] = useState<ComfortTask[]>([]);
 
   useEffect(() => {
     loadDashboard();
@@ -47,10 +50,48 @@ function MoodCompanion() {
     try {
       const data = await moodsApi.getDashboard();
       setDashboard(data);
+      setTrendStats(data.latestWeekStats);
+      setTrendData(data.trend);
     } catch (error) {
       console.error('加载情绪数据失败', error);
     }
   };
+
+  const loadTrendByPeriod = useCallback(async (p: 'week' | 'month' | 'all') => {
+    try {
+      const periodForTrend = p === 'all' ? 'month' : p === 'month' ? 'week' : 'day';
+      const periodsNum = p === 'all' ? 12 : p === 'month' ? 4 : 7;
+      const [stats, trend] = await Promise.all([
+        moodsApi.getStats(p, 1),
+        moodsApi.getTrend(periodForTrend, periodsNum),
+      ]);
+      setTrendStats(stats);
+      setTrendData(trend);
+    } catch (error) {
+      console.error('加载趋势数据失败', error);
+    }
+  }, []);
+
+  const loadAllComfortTasks = useCallback(async () => {
+    try {
+      const tasks = await moodsApi.getComfortTasks(true);
+      setAllComfortTasks(tasks);
+    } catch (error) {
+      console.error('加载安慰任务失败', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'trend') {
+      loadTrendByPeriod(period);
+    }
+  }, [activeTab, period, loadTrendByPeriod]);
+
+  useEffect(() => {
+    if (activeTab === 'tasks' && allComfortTasks.length === 0) {
+      loadAllComfortTasks();
+    }
+  }, [activeTab, allComfortTasks.length, loadAllComfortTasks]);
 
   const toggleTrigger = (trigger: string) => {
     setSelectedTriggers(prev =>
@@ -314,7 +355,7 @@ function MoodCompanion() {
         </div>
       )}
 
-      {activeTab === 'trend' && (
+      {activeTab === 'trend' && trendStats && (
         <div className="trend-section">
           <div className="trend-header">
             <h3 className="section-title">📈 趋势分析</h3>
@@ -337,30 +378,30 @@ function MoodCompanion() {
 
           <div className="stats-cards">
             <div className="stat-card card">
-              <div className="stat-label">本周平均分</div>
+              <div className="stat-label">平均分</div>
               <div className="stat-value" style={{ color: '#6c5ce7' }}>
-                {dashboard.latestWeekStats.overallAvgScore.toFixed(1)}
+                {trendStats.overallAvgScore.toFixed(1)}
               </div>
-              <div className={`trend-indicator ${dashboard.latestWeekStats.trend === 'improving' ? 'up' : dashboard.latestWeekStats.trend === 'declining' ? 'down' : 'stable'}`}>
-                {dashboard.latestWeekStats.trend === 'improving' ? '↑ 上升' : dashboard.latestWeekStats.trend === 'declining' ? '↓ 下降' : '→ 稳定'}
+              <div className={`trend-indicator ${trendStats.trend === 'improving' ? 'up' : trendStats.trend === 'declining' ? 'down' : 'stable'}`}>
+                {trendStats.trend === 'improving' ? '↑ 上升' : trendStats.trend === 'declining' ? '↓ 下降' : '→ 稳定'}
               </div>
-              <div className="stat-desc">{dashboard.latestWeekStats.trendDescription}</div>
+              <div className="stat-desc">{trendStats.trendDescription}</div>
             </div>
             <div className="stat-card card">
               <div className="stat-label">连续好心情</div>
               <div className="stat-value" style={{ color: '#00b894' }}>
-                {dashboard.latestWeekStats.consecutiveGoodDays} 天
+                {trendStats.consecutiveGoodDays} 天
               </div>
               <div className="stat-desc">继续保持哦~</div>
             </div>
             <div className="stat-card card">
               <div className="stat-label">最佳心情日</div>
-              {dashboard.latestWeekStats.bestDay ? (
+              {trendStats.bestDay ? (
                 <>
                   <div className="stat-value" style={{ color: '#fd79a8' }}>
-                  {getMoodInfo(dashboard.latestWeekStats.bestDay.mood).emoji} {getMoodInfo(dashboard.latestWeekStats.bestDay.mood).label}
+                  {getMoodInfo(trendStats.bestDay.mood).emoji} {getMoodInfo(trendStats.bestDay.mood).label}
                 </div>
-                  <div className="stat-desc">{dashboard.latestWeekStats.bestDay.date}</div>
+                  <div className="stat-desc">{trendStats.bestDay.date}</div>
                 </>
               ) : (
                 <div className="stat-desc">暂无数据</div>
@@ -371,7 +412,7 @@ function MoodCompanion() {
           <div className="trend-chart card">
             <h4 className="sub-title">情绪走势</h4>
             <div className="chart-container">
-              {dashboard.trend.map((point, idx) => (
+              {trendData.map((point, idx) => (
                 <div key={idx} className="chart-bar-wrapper">
                   <div className="chart-bars">
                     <div
@@ -401,8 +442,8 @@ function MoodCompanion() {
             <h4 className="sub-title">情绪分布</h4>
             <div className="distribution-list">
               {moodOptions.map(mood => {
-                const count = dashboard.latestWeekStats.overallMoodDistribution[mood.level] || 0;
-                const total = Object.values(dashboard.latestWeekStats.overallMoodDistribution).reduce((a, b) => a + b, 0);
+                const count = trendStats.overallMoodDistribution[mood.level] || 0;
+                const total = Object.values(trendStats.overallMoodDistribution).reduce((a, b) => a + b, 0);
                 const percent = total > 0 ? (count / total * 100) : 0;
                 return (
                   <div key={mood.level} className="distribution-item">
@@ -427,7 +468,7 @@ function MoodCompanion() {
         <div className="tasks-section">
           <h3 className="section-title">🎯 安慰任务库</h3>
           <div className="tasks-grid">
-            {dashboard.recommendedTasks.map(task => (
+            {allComfortTasks.map(task => (
               <div key={task.id} className="task-card card">
                 <div className="task-icon" style={{ background: `${task.color}20`, color: task.color }}>
                   {task.icon}
