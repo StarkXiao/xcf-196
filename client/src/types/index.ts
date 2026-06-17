@@ -93,7 +93,7 @@ export interface Reminder {
 export interface TimelineEvent {
   id: string;
   date: string;
-  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth';
+  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth' | 'ledger_expense';
   title: string;
   description: string;
   icon: string;
@@ -779,4 +779,141 @@ export interface MoodDashboardData {
   recommendedTasks: ComfortTask[];
   recentRecords: MoodRecord[];
   trend: MoodTrendPoint[];
+}
+
+export type LedgerCategory =
+  | 'food'
+  | 'transport'
+  | 'shopping'
+  | 'entertainment'
+  | 'travel'
+  | 'housing'
+  | 'medical'
+  | 'education'
+  | 'gift'
+  | 'anniversary'
+  | 'other';
+
+export type LedgerType = 'expense' | 'income';
+
+export interface LedgerRecord {
+  id: string;
+  title: string;
+  description?: string;
+  amount: number;
+  type: LedgerType;
+  category: LedgerCategory;
+  date: string;
+  paidBy: 'user' | 'partner' | 'split';
+  splitRatio?: number;
+  userShare?: number;
+  partnerShare?: number;
+  tags?: string[];
+  linkedAnniversaryId?: string;
+  linkedAnniversaryTitle?: string;
+  isSpecialDay?: boolean;
+  receiptPhoto?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LedgerCategoryInfo {
+  category: LedgerCategory;
+  label: string;
+  icon: string;
+  color: string;
+}
+
+export interface LedgerMonthSummary {
+  year: number;
+  month: number;
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+  userTotalPaid: number;
+  partnerTotalPaid: number;
+  userShareTotal: number;
+  partnerShareTotal: number;
+  userSettlement: number;
+  partnerSettlement: number;
+  settlementNeeded: boolean;
+  byCategory: {
+    category: LedgerCategory;
+    label: string;
+    amount: number;
+    count: number;
+    percentage: number;
+    icon: string;
+    color: string;
+  }[];
+  recordCount: number;
+}
+
+export interface LedgerStats {
+  totalRecords: number;
+  totalIncome: number;
+  totalExpense: number;
+  currentMonthExpense: number;
+  currentMonthIncome: number;
+  averageDailyExpense: number;
+  topCategory: {
+    category: LedgerCategory;
+    label: string;
+    amount: number;
+    percentage: number;
+  } | null;
+  userTotalPaid: number;
+  partnerTotalPaid: number;
+}
+
+export interface SpecialDayBudget {
+  id: string;
+  title: string;
+  description?: string;
+  budget: number;
+  usedAmount: number;
+  remaining: number;
+  date: string;
+  type: 'anniversary' | 'birthday' | 'valentine' | 'christmas' | 'custom';
+  linkedAnniversaryId?: string;
+  isActive: boolean;
+  color: string;
+  icon: string;
+  createdAt: string;
+}
+
+export interface SpecialDayBudgetCreate {
+  title: string;
+  description?: string;
+  budget: number;
+  date: string;
+  type: SpecialDayBudget['type'];
+  linkedAnniversaryId?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface LedgerSettlement {
+  id: string;
+  year: number;
+  month: number;
+  userPaid: number;
+  partnerPaid: number;
+  userShare: number;
+  partnerShare: number;
+  userOwes: number;
+  partnerOwes: number;
+  settledBy?: 'user' | 'partner';
+  settledAt?: string;
+  status: 'pending' | 'settled';
+  note?: string;
+  createdAt: string;
+}
+
+export interface LedgerDashboardData {
+  stats: LedgerStats;
+  currentMonthSummary: LedgerMonthSummary;
+  recentRecords: LedgerRecord[];
+  specialDayBudgets: SpecialDayBudget[];
+  pendingSettlement: LedgerSettlement | null;
 }

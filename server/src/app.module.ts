@@ -12,6 +12,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
 import { TravelPlansModule } from './travel-plans/travel-plans.module';
 import { GiftPlansModule } from './gift-plans/gift-plans.module';
 import { MoodsModule } from './moods/moods.module';
+import { LedgerModule } from './ledger/ledger.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { MoodsModule } from './moods/moods.module';
     TravelPlansModule,
     GiftPlansModule,
     MoodsModule,
+    LedgerModule,
   ],
 })
 export class AppModule {}

@@ -8,6 +8,7 @@ const navItems = [
   { path: '/pacts', label: '约定', icon: '✨' },
   { path: '/checkins', label: '打卡', icon: '📝' },
   { path: '/mood', label: '情绪陪伴', icon: '💗' },
+  { path: '/ledger', label: '共同账本', icon: '💰' },
   { path: '/wishlist', label: '愿望清单', icon: '💫' },
   { path: '/building-map', label: '建筑地图', icon: '🗺️' },
   { path: '/travel-plans', label: '旅行计划', icon: '✈️' },

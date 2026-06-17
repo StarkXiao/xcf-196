@@ -83,7 +83,7 @@ export interface Reminder {
 export interface TimelineEvent {
   id: string;
   date: string;
-  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth';
+  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth' | 'ledger_expense';
   title: string;
   description: string;
   icon: string;
@@ -1898,5 +1898,345 @@ export const mockComfortTasks: ComfortTask[] = [
     completedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     completedBy: 'partner',
     createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+export interface LedgerRecord {
+  id: string;
+  title: string;
+  description?: string;
+  amount: number;
+  type: 'expense' | 'income';
+  category: 'food' | 'transport' | 'shopping' | 'entertainment' | 'travel' | 'housing' | 'medical' | 'education' | 'gift' | 'anniversary' | 'other';
+  date: string;
+  paidBy: 'user' | 'partner' | 'split';
+  splitRatio?: number;
+  userShare?: number;
+  partnerShare?: number;
+  tags?: string[];
+  linkedAnniversaryId?: string;
+  linkedAnniversaryTitle?: string;
+  isSpecialDay?: boolean;
+  receiptPhoto?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SpecialDayBudget {
+  id: string;
+  title: string;
+  description?: string;
+  budget: number;
+  usedAmount: number;
+  remaining: number;
+  date: string;
+  type: 'anniversary' | 'birthday' | 'valentine' | 'christmas' | 'custom';
+  linkedAnniversaryId?: string;
+  isActive: boolean;
+  color: string;
+  icon: string;
+  createdAt: string;
+}
+
+export interface LedgerSettlement {
+  id: string;
+  year: number;
+  month: number;
+  userPaid: number;
+  partnerPaid: number;
+  userShare: number;
+  partnerShare: number;
+  userOwes: number;
+  partnerOwes: number;
+  settledBy?: 'user' | 'partner';
+  settledAt?: string;
+  status: 'pending' | 'settled';
+  note?: string;
+  createdAt: string;
+}
+
+const now = new Date();
+const currentYear = now.getFullYear();
+const currentMonth = now.getMonth();
+
+export const mockLedgerRecords: LedgerRecord[] = [
+  {
+    id: 'ledger-1',
+    title: '晚餐 - 火锅',
+    description: '一起吃的麻辣火锅，超开心！',
+    amount: 168.00,
+    type: 'expense',
+    category: 'food',
+    date: new Date(currentYear, currentMonth, 15).toISOString().split('T')[0],
+    paidBy: 'split',
+    splitRatio: 0.5,
+    userShare: 84.00,
+    partnerShare: 84.00,
+    tags: ['约会', '美食'],
+    isSpecialDay: false,
+    createdAt: new Date(currentYear, currentMonth, 15).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth, 15).toISOString(),
+  },
+  {
+    id: 'ledger-2',
+    title: '电影票',
+    description: '看了新上映的爱情片',
+    amount: 98.00,
+    type: 'expense',
+    category: 'entertainment',
+    date: new Date(currentYear, currentMonth, 14).toISOString().split('T')[0],
+    paidBy: 'user',
+    userShare: 98.00,
+    partnerShare: 0,
+    tags: ['约会', '电影'],
+    isSpecialDay: false,
+    createdAt: new Date(currentYear, currentMonth, 14).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth, 14).toISOString(),
+  },
+  {
+    id: 'ledger-3',
+    title: '纪念日礼物',
+    description: '给TA的一周年纪念日礼物',
+    amount: 520.00,
+    type: 'expense',
+    category: 'anniversary',
+    date: new Date(currentYear, currentMonth, 10).toISOString().split('T')[0],
+    paidBy: 'user',
+    userShare: 520.00,
+    partnerShare: 0,
+    tags: ['纪念日', '礼物'],
+    linkedAnniversaryId: 'anniv-1',
+    linkedAnniversaryTitle: '恋爱一周年',
+    isSpecialDay: true,
+    createdAt: new Date(currentYear, currentMonth, 10).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth, 10).toISOString(),
+  },
+  {
+    id: 'ledger-4',
+    title: '地铁充值',
+    description: '本月地铁卡充值',
+    amount: 200.00,
+    type: 'expense',
+    category: 'transport',
+    date: new Date(currentYear, currentMonth, 12).toISOString().split('T')[0],
+    paidBy: 'partner',
+    userShare: 0,
+    partnerShare: 200.00,
+    tags: ['交通'],
+    isSpecialDay: false,
+    createdAt: new Date(currentYear, currentMonth, 12).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth, 12).toISOString(),
+  },
+  {
+    id: 'ledger-5',
+    title: '超市采购',
+    description: '周末一起逛超市买的零食和日用品',
+    amount: 325.50,
+    type: 'expense',
+    category: 'housing',
+    date: new Date(currentYear, currentMonth, 11).toISOString().split('T')[0],
+    paidBy: 'split',
+    splitRatio: 0.5,
+    userShare: 162.75,
+    partnerShare: 162.75,
+    tags: ['居家', '超市'],
+    isSpecialDay: false,
+    createdAt: new Date(currentYear, currentMonth, 11).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth, 11).toISOString(),
+  },
+  {
+    id: 'ledger-6',
+    title: '工资入账',
+    description: '本月工资',
+    amount: 15000.00,
+    type: 'income',
+    category: 'other',
+    date: new Date(currentYear, currentMonth, 5).toISOString().split('T')[0],
+    paidBy: 'user',
+    userShare: 15000.00,
+    partnerShare: 0,
+    tags: ['工资'],
+    isSpecialDay: false,
+    createdAt: new Date(currentYear, currentMonth, 5).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth, 5).toISOString(),
+  },
+  {
+    id: 'ledger-7',
+    title: '情侣装',
+    description: '买了两套情侣款卫衣',
+    amount: 399.00,
+    type: 'expense',
+    category: 'shopping',
+    date: new Date(currentYear, currentMonth, 8).toISOString().split('T')[0],
+    paidBy: 'partner',
+    userShare: 0,
+    partnerShare: 399.00,
+    tags: ['购物', '情侣'],
+    isSpecialDay: false,
+    createdAt: new Date(currentYear, currentMonth, 8).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth, 8).toISOString(),
+  },
+  {
+    id: 'ledger-8',
+    title: '旅行机票',
+    description: '下个月的旅行机票预订',
+    amount: 2800.00,
+    type: 'expense',
+    category: 'travel',
+    date: new Date(currentYear, currentMonth, 3).toISOString().split('T')[0],
+    paidBy: 'split',
+    splitRatio: 0.5,
+    userShare: 1400.00,
+    partnerShare: 1400.00,
+    tags: ['旅行', '机票'],
+    isSpecialDay: false,
+    createdAt: new Date(currentYear, currentMonth, 3).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth, 3).toISOString(),
+  },
+  {
+    id: 'ledger-9',
+    title: '蛋糕',
+    description: 'TA生日的生日蛋糕',
+    amount: 198.00,
+    type: 'expense',
+    category: 'gift',
+    date: new Date(currentYear, currentMonth - 1, 20).toISOString().split('T')[0],
+    paidBy: 'user',
+    userShare: 198.00,
+    partnerShare: 0,
+    tags: ['生日', '蛋糕'],
+    isSpecialDay: true,
+    createdAt: new Date(currentYear, currentMonth - 1, 20).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth - 1, 20).toISOString(),
+  },
+  {
+    id: 'ledger-10',
+    title: '买书',
+    description: '一起买了几本想看的书',
+    amount: 126.00,
+    type: 'expense',
+    category: 'education',
+    date: new Date(currentYear, currentMonth - 1, 15).toISOString().split('T')[0],
+    paidBy: 'split',
+    splitRatio: 0.5,
+    userShare: 63.00,
+    partnerShare: 63.00,
+    tags: ['学习', '阅读'],
+    isSpecialDay: false,
+    createdAt: new Date(currentYear, currentMonth - 1, 15).toISOString(),
+    updatedAt: new Date(currentYear, currentMonth - 1, 15).toISOString(),
+  },
+  {
+    id: 'ledger-11',
+    title: '纪念日晚餐',
+    description: '恋爱一周年纪念日的浪漫晚餐',
+    amount: 688.00,
+    type: 'expense',
+    category: 'anniversary',
+    date: '2024-02-14',
+    paidBy: 'user',
+    userShare: 688.00,
+    partnerShare: 0,
+    tags: ['纪念日', '晚餐', '浪漫'],
+    linkedAnniversaryId: 'anniv-1',
+    linkedAnniversaryTitle: '恋爱一周年',
+    isSpecialDay: true,
+    createdAt: '2024-02-14T12:00:00.000Z',
+    updatedAt: '2024-02-14T12:00:00.000Z',
+  },
+  {
+    id: 'ledger-12',
+    title: '情人节礼物',
+    description: '情人节给TA的惊喜礼物',
+    amount: 999.00,
+    type: 'expense',
+    category: 'gift',
+    date: '2024-02-14',
+    paidBy: 'partner',
+    userShare: 0,
+    partnerShare: 999.00,
+    tags: ['情人节', '礼物'],
+    isSpecialDay: true,
+    createdAt: '2024-02-10T12:00:00.000Z',
+    updatedAt: '2024-02-10T12:00:00.000Z',
+  },
+];
+
+export const mockSpecialDayBudgets: SpecialDayBudget[] = [
+  {
+    id: 'budget-1',
+    title: '恋爱一周年纪念日',
+    description: '恋爱一周年纪念日的预算规划',
+    budget: 2000.00,
+    usedAmount: 1208.00,
+    remaining: 792.00,
+    date: '2024-02-14',
+    type: 'anniversary',
+    linkedAnniversaryId: 'anniv-1',
+    isActive: true,
+    color: '#ff4081',
+    icon: '💕',
+    createdAt: '2024-01-01T12:00:00.000Z',
+  },
+  {
+    id: 'budget-2',
+    title: 'TA的生日',
+    description: '给TA过生日的预算',
+    budget: 1000.00,
+    usedAmount: 198.00,
+    remaining: 802.00,
+    date: new Date(currentYear, currentMonth - 1, 20).toISOString().split('T')[0],
+    type: 'birthday',
+    isActive: true,
+    color: '#e91e63',
+    icon: '🎂',
+    createdAt: new Date(currentYear, currentMonth - 2, 1).toISOString(),
+  },
+  {
+    id: 'budget-3',
+    title: '下一个纪念日',
+    description: '即将到来的纪念日预算',
+    budget: 3000.00,
+    usedAmount: 0,
+    remaining: 3000.00,
+    date: new Date(currentYear, currentMonth + 1, 14).toISOString().split('T')[0],
+    type: 'anniversary',
+    linkedAnniversaryId: 'anniv-next',
+    isActive: true,
+    color: '#ff6b6b',
+    icon: '💝',
+    createdAt: new Date(currentYear, currentMonth - 1, 1).toISOString(),
+  },
+];
+
+export const mockSettlements: LedgerSettlement[] = [
+  {
+    id: 'settlement-1',
+    year: currentYear,
+    month: currentMonth,
+    userPaid: 2706.00,
+    partnerPaid: 1797.50,
+    userShare: 2103.38,
+    partnerShare: 2399.88,
+    userOwes: 297.38,
+    partnerOwes: 0,
+    status: 'pending',
+    createdAt: new Date(currentYear, currentMonth, 15).toISOString(),
+  },
+  {
+    id: 'settlement-2',
+    year: currentYear,
+    month: currentMonth - 1,
+    userPaid: 3200.00,
+    partnerPaid: 2800.00,
+    userShare: 3000.00,
+    partnerShare: 3000.00,
+    userOwes: 0,
+    partnerOwes: 200.00,
+    settledBy: 'partner',
+    settledAt: new Date(currentYear, currentMonth, 2).toISOString(),
+    status: 'settled',
+    note: '支付宝转账已收到',
+    createdAt: new Date(currentYear, currentMonth - 1, 28).toISOString(),
   },
 ];

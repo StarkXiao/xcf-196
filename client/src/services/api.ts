@@ -49,6 +49,13 @@ import type {
   MoodDashboardData,
   MoodLevel,
   MoodTrendPoint,
+  LedgerRecord,
+  LedgerStats,
+  LedgerMonthSummary,
+  SpecialDayBudget,
+  LedgerSettlement,
+  LedgerDashboardData,
+  LedgerCategoryInfo,
 } from '../types';
 
 const api = axios.create({
@@ -376,4 +383,39 @@ export const moodsApi = {
     completedNote?: string;
   }) => api.post<ComfortTask>(`/moods/comfort-tasks/${id}/complete`, data || {}).then(res => res.data),
   getDashboard: () => api.get<MoodDashboardData>('/moods/dashboard').then(res => res.data),
+};
+
+export const ledgerApi = {
+  findAll: (startDate?: string, endDate?: string, category?: string, type?: string, paidBy?: string, isSpecialDay?: boolean) =>
+    api.get<LedgerRecord[]>('/ledger', { params: { startDate, endDate, category, type, paidBy, isSpecialDay } }).then(res => res.data),
+  findOne: (id: string) => api.get<LedgerRecord>(`/ledger/${id}`).then(res => res.data),
+  create: (data: Partial<LedgerRecord>) => api.post<LedgerRecord>('/ledger', data).then(res => res.data),
+  update: (id: string, data: Partial<LedgerRecord>) => api.patch<LedgerRecord>(`/ledger/${id}`, data).then(res => res.data),
+  remove: (id: string) => api.delete(`/ledger/${id}`),
+  getStats: () => api.get<LedgerStats>('/ledger/stats').then(res => res.data),
+  getDashboard: () => api.get<LedgerDashboardData>('/ledger/dashboard').then(res => res.data),
+  getCategories: () => api.get<LedgerCategoryInfo[]>('/ledger/categories').then(res => res.data),
+  getMonthSummary: (year: number, month: number) =>
+    api.get<LedgerMonthSummary>('/ledger/month-summary', { params: { year, month } }).then(res => res.data),
+  getSpecialDayBudgets: (active?: boolean) =>
+    api.get<SpecialDayBudget[]>('/ledger/special-day-budgets', { params: { active } }).then(res => res.data),
+  createSpecialDayBudget: (data: {
+    title: string;
+    description?: string;
+    budget: number;
+    date: string;
+    type: SpecialDayBudget['type'];
+    linkedAnniversaryId?: string;
+    color?: string;
+    icon?: string;
+  }) => api.post<SpecialDayBudget>('/ledger/special-day-budgets', data).then(res => res.data),
+  updateSpecialDayBudget: (id: string, data: Partial<SpecialDayBudget>) =>
+    api.patch<SpecialDayBudget>(`/ledger/special-day-budgets/${id}`, data).then(res => res.data),
+  deleteSpecialDayBudget: (id: string) => api.delete(`/ledger/special-day-budgets/${id}`),
+  getSettlements: (status?: string) =>
+    api.get<LedgerSettlement[]>('/ledger/settlements', { params: { status } }).then(res => res.data),
+  createSettlement: (year: number, month: number) =>
+    api.post<LedgerSettlement>(`/ledger/settlements/${year}/${month}`).then(res => res.data),
+  settle: (id: string, settledBy: 'user' | 'partner', note?: string) =>
+    api.post<LedgerSettlement>(`/ledger/settlements/${id}/settle`, { settledBy, note }).then(res => res.data),
 };
