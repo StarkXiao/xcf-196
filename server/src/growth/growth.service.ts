@@ -8,6 +8,15 @@ import {
   GROWTH_LEVELS,
   BADGE_DEFINITIONS,
   POINT_RULES,
+  BuildingDefinition,
+  BuildingInstance,
+  BuildingUpgradeValidation,
+  BuildingOutputSettlement,
+  BuildingMapData,
+  BUILDING_DEFINITIONS,
+  calculateBuildingUpgradeCost,
+  calculateBuildingOutput,
+  getOutputTypeLabel,
 } from './entities/growth.entity';
 import { mockGrowthRecords } from '../data/seed';
 import { CheckinsService } from '../checkins/checkins.service';
@@ -20,6 +29,9 @@ export class GrowthService {
   private records: GrowthRecord[] = [...mockGrowthRecords];
   private unlockedBadgeIds: Set<string> = new Set();
   private badgeUnlockDates: Map<string, string> = new Map();
+  private buildingInstances: Map<string, BuildingInstance> = new Map();
+  private lastOutputTick: string = new Date().toISOString();
+  private readonly OUTPUT_INTERVAL_MS: number = 60 * 60 * 1000;
 
   constructor(
     @Inject(forwardRef(() => CheckinsService))
@@ -32,6 +44,7 @@ export class GrowthService {
     private readonly timelineService: TimelineService,
   ) {
     this.initializeBadgesFromSeed();
+    this.initializeBuildings();
   }
 
   private initializeBadgesFromSeed() {
@@ -391,5 +404,370 @@ export class GrowthService {
       unlockedBadgesCount,
       totalBadgesCount: badges.length,
     };
+  }
+
+  initializeBuildings(): void {
+    BUILDING_DEFINITIONS.forEach(def => {
+      const isInitialBuilding = def.prerequisites.length === 0 && def.unlockLevel <= 1;
+      this.buildingInstances.set(def.id, {
+        id: uuidv4(),
+        definitionId: def.id,
+        level: isInitialBuilding ? 1 : 0,
+        unlocked: isInitialBuilding,
+        unlockedAt: isInitialBuilding ? new Date().toISOString() : undefined,
+        lastCollectedAt: isInitialBuilding ? new Date().toISOString() : undefined,
+        pendingOutput: 0,
+        totalOutputCollected: 0,
+      });
+    });
+  }
+
+  getAllBuildings(): BuildingInstance[] {
+    this.tickOutput();
+    return Array.from(this.buildingInstances.values());
+  }
+
+  getBuildingDefinition(definitionId: string): BuildingDefinition | undefined {
+    return BUILDING_DEFINITIONS.find(d => d.id === definitionId);
+  }
+
+  private tickOutput(): void {
+    const now = new Date();
+    const lastTick = new Date(this.lastOutputTick);
+    const elapsedMs = now.getTime() - lastTick.getTime();
+    if (elapsedMs < this.OUTPUT_INTERVAL_MS) return;
+
+    const hoursElapsed = Math.floor(elapsedMs / this.OUTPUT_INTERVAL_MS);
+    if (hoursElapsed <= 0) return;
+
+    this.buildingInstances.forEach(instance => {
+      if (!instance.unlocked || instance.level <= 0) return;
+      const def = this.getBuildingDefinition(instance.definitionId);
+      if (!def) return;
+      const hourlyOutput = calculateBuildingOutput(def, instance.level);
+      const totalOutput = hourlyOutput * hoursElapsed;
+      instance.pendingOutput += totalOutput;
+    });
+
+    this.lastOutputTick = new Date(
+      lastTick.getTime() + hoursElapsed * this.OUTPUT_INTERVAL_MS,
+    ).toISOString();
+  }
+
+  validateBuildingUnlock(definitionId: string): BuildingUpgradeValidation {
+    const def = this.getBuildingDefinition(definitionId);
+    if (!def) {
+      return { canUpgrade: false, reason: '该建筑不存在' };
+    }
+
+    const instance = this.buildingInstances.get(definitionId);
+    if (instance && instance.unlocked) {
+      return { canUpgrade: false, reason: '该建筑已解锁' };
+    }
+
+    const totalPoints = this.calculateTotalPoints();
+    const userLevel = this.getLevel(totalPoints);
+
+    if (userLevel.level < def.unlockLevel) {
+      return {
+        canUpgrade: false,
+        reason: `需要成长等级达到 Lv.${def.unlockLevel}（当前 Lv.${userLevel.level}）`,
+        requiredLevel: def.unlockLevel,
+        currentLevel: userLevel.level,
+      };
+    }
+
+    const missingPrerequisites: string[] = [];
+    def.prerequisites.forEach(prereqId => {
+      const prereqInstance = this.buildingInstances.get(prereqId);
+      const prereqDef = this.getBuildingDefinition(prereqId);
+      if (!prereqInstance || !prereqInstance.unlocked) {
+        missingPrerequisites.push(prereqDef?.name || prereqId);
+      }
+    });
+
+    if (missingPrerequisites.length > 0) {
+      return {
+        canUpgrade: false,
+        reason: `需要先建造：${missingPrerequisites.join('、')}`,
+        missingPrerequisites,
+      };
+    }
+
+    const cost = calculateBuildingUpgradeCost(def, 0);
+    if (totalPoints < cost) {
+      return {
+        canUpgrade: false,
+        reason: `需要 ${cost} 成长值（当前 ${totalPoints}）`,
+        cost,
+        currentPoints: totalPoints,
+      };
+    }
+
+    return { canUpgrade: true, cost };
+  }
+
+  unlockBuilding(definitionId: string): { success: boolean; message: string; instance?: BuildingInstance; cost?: number } {
+    const validation = this.validateBuildingUnlock(definitionId);
+    if (!validation.canUpgrade) {
+      return { success: false, message: validation.reason || '解锁失败' };
+    }
+
+    const def = this.getBuildingDefinition(definitionId)!;
+    const cost = validation.cost!;
+
+    this.addRecord(
+      -cost,
+      `建造「${def.name}」消耗成长值`,
+      'milestone',
+      undefined,
+      { buildingId: definitionId, action: 'build', cost },
+    );
+
+    const instance = this.buildingInstances.get(definitionId);
+    if (instance) {
+      instance.unlocked = true;
+      instance.level = 1;
+      instance.unlockedAt = new Date().toISOString();
+      instance.lastCollectedAt = new Date().toISOString();
+    }
+
+    this.timelineService.create({
+      date: new Date().toISOString().split('T')[0],
+      type: 'milestone',
+      title: `🏗️ 建造完成：${def.name}`,
+      description: `解锁了新建筑「${def.name}」！${def.description}`,
+      icon: def.icon,
+      metadata: {
+        buildingId: definitionId,
+        buildingName: def.name,
+        isBuildingUnlock: true,
+        color: def.color,
+        growthPoints: -cost,
+      },
+    });
+
+    return {
+      success: true,
+      message: `🎉 成功建造「${def.name}」！${def.upgradeHints[0]}`,
+      instance,
+      cost,
+    };
+  }
+
+  validateBuildingUpgrade(definitionId: string): BuildingUpgradeValidation {
+    const def = this.getBuildingDefinition(definitionId);
+    if (!def) {
+      return { canUpgrade: false, reason: '该建筑不存在' };
+    }
+
+    const instance = this.buildingInstances.get(definitionId);
+    if (!instance || !instance.unlocked) {
+      return { canUpgrade: false, reason: '该建筑尚未解锁' };
+    }
+
+    if (instance.level >= def.maxLevel) {
+      return { canUpgrade: false, reason: `「${def.name}」已达到最高等级 Lv.${def.maxLevel}` };
+    }
+
+    const totalPoints = this.calculateTotalPoints();
+    const cost = calculateBuildingUpgradeCost(def, instance.level);
+
+    if (totalPoints < cost) {
+      return {
+        canUpgrade: false,
+        reason: `升级需要 ${cost} 成长值（当前 ${totalPoints}）`,
+        cost,
+        currentPoints: totalPoints,
+      };
+    }
+
+    return { canUpgrade: true, cost, currentLevel: instance.level };
+  }
+
+  upgradeBuilding(definitionId: string): {
+    success: boolean;
+    message: string;
+    instance?: BuildingInstance;
+    cost?: number;
+    newLevel?: number;
+    upgradeHint?: string;
+  } {
+    const validation = this.validateBuildingUpgrade(definitionId);
+    if (!validation.canUpgrade) {
+      return { success: false, message: validation.reason || '升级失败' };
+    }
+
+    const def = this.getBuildingDefinition(definitionId)!;
+    const instance = this.buildingInstances.get(definitionId)!;
+    const cost = validation.cost!;
+    const newLevel = instance.level + 1;
+
+    this.addRecord(
+      -cost,
+      `升级「${def.name}」至 Lv.${newLevel} 消耗成长值`,
+      'milestone',
+      undefined,
+      { buildingId: definitionId, action: 'upgrade', cost, newLevel },
+    );
+
+    instance.level = newLevel;
+    const upgradeHint = def.upgradeHints[newLevel - 1] || `升级至 Lv.${newLevel}`;
+
+    this.timelineService.create({
+      date: new Date().toISOString().split('T')[0],
+      type: 'milestone',
+      title: `⬆️ 升级完成：${def.name} Lv.${newLevel}`,
+      description: upgradeHint,
+      icon: def.icon,
+      metadata: {
+        buildingId: definitionId,
+        buildingName: def.name,
+        isBuildingUpgrade: true,
+        color: def.color,
+        newLevel,
+        growthPoints: -cost,
+      },
+    });
+
+    return {
+      success: true,
+      message: `✨「${def.name}」升级至 Lv.${newLevel}！${upgradeHint}`,
+      instance,
+      cost,
+      newLevel,
+      upgradeHint,
+    };
+  }
+
+  collectOutput(definitionId?: string): {
+    success: boolean;
+    message: string;
+    totalCollected: number;
+    details: BuildingOutputSettlement[];
+  } {
+    this.tickOutput();
+
+    const details: BuildingOutputSettlement[] = [];
+    let totalCollected = 0;
+    const now = new Date();
+    const endStr = now.toISOString();
+
+    const targets = definitionId
+      ? [this.buildingInstances.get(definitionId)].filter(Boolean) as BuildingInstance[]
+      : Array.from(this.buildingInstances.values());
+
+    targets.forEach(instance => {
+      if (!instance.unlocked || instance.pendingOutput <= 0) return;
+      const def = this.getBuildingDefinition(instance.definitionId);
+      if (!def) return;
+
+      const output = instance.pendingOutput;
+      totalCollected += output;
+      instance.totalOutputCollected += output;
+
+      this.addRecord(
+        output,
+        `收取「${def.name}」产出 +${output} 成长值`,
+        'milestone',
+        undefined,
+        { buildingId: instance.definitionId, action: 'collect_output', output },
+      );
+
+      details.push({
+        buildingId: instance.definitionId,
+        buildingName: def.name,
+        level: instance.level,
+        outputAmount: output,
+        outputType: getOutputTypeLabel(def.outputType),
+        period: {
+          start: instance.lastCollectedAt || endStr,
+          end: endStr,
+        },
+      });
+
+      instance.pendingOutput = 0;
+      instance.lastCollectedAt = endStr;
+    });
+
+    const message = totalCollected > 0
+      ? `🎁 成功收取 ${totalCollected} 成长值！`
+      : '暂无待收取的产出';
+
+    return { success: totalCollected > 0, message, totalCollected, details };
+  }
+
+  getBuildingMapData(): BuildingMapData {
+    this.tickOutput();
+    const totalPoints = this.calculateTotalPoints();
+    const userLevel = this.getLevel(totalPoints);
+
+    let totalPendingOutput = 0;
+    let upgradeableCount = 0;
+    let nextUnlockable: BuildingDefinition | undefined;
+
+    const outputSummary: BuildingOutputSettlement[] = [];
+
+    BUILDING_DEFINITIONS.forEach(def => {
+      const instance = this.buildingInstances.get(def.id);
+      if (!instance) return;
+
+      totalPendingOutput += instance.pendingOutput;
+
+      if (instance.unlocked && instance.level < def.maxLevel) {
+        const cost = calculateBuildingUpgradeCost(def, instance.level);
+        if (totalPoints >= cost) {
+          upgradeableCount++;
+        }
+      }
+
+      if (!instance.unlocked && !nextUnlockable) {
+        const prereqsMet = def.prerequisites.every(pid => {
+          const pi = this.buildingInstances.get(pid);
+          return pi && pi.unlocked;
+        });
+        if (prereqsMet && userLevel.level >= def.unlockLevel) {
+          nextUnlockable = def;
+        }
+      }
+
+      if (instance.unlocked && instance.level > 0) {
+        const hourlyOutput = calculateBuildingOutput(def, instance.level);
+        outputSummary.push({
+          buildingId: def.id,
+          buildingName: def.name,
+          level: instance.level,
+          outputAmount: hourlyOutput,
+          outputType: getOutputTypeLabel(def.outputType),
+          period: {
+            start: new Date().toISOString(),
+            end: new Date(Date.now() + this.OUTPUT_INTERVAL_MS).toISOString(),
+          },
+        });
+      }
+    });
+
+    if (!nextUnlockable) {
+      for (const def of BUILDING_DEFINITIONS) {
+        const instance = this.buildingInstances.get(def.id);
+        if (instance && !instance.unlocked) {
+          nextUnlockable = def;
+          break;
+        }
+      }
+    }
+
+    return {
+      buildings: Array.from(this.buildingInstances.values()),
+      definitions: BUILDING_DEFINITIONS,
+      totalPendingOutput,
+      nextUnlockable,
+      upgradeableCount,
+      outputSummary,
+    };
+  }
+
+  getBuildingDefs(): BuildingDefinition[] {
+    return BUILDING_DEFINITIONS;
   }
 }

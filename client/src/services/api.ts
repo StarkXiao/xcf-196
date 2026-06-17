@@ -24,6 +24,12 @@ import type {
   PeriodUnit,
   WishItem,
   WishStats,
+  BuildingDefinition,
+  BuildingInstance,
+  BuildingUpgradeValidation,
+  BuildingMapData,
+  CollectResult,
+  BuildingActionResult,
 } from '../types';
 
 const api = axios.create({
@@ -187,6 +193,21 @@ export const growthApi = {
     api.post<GrowthRecord>('/growth/records', data).then(res => res.data),
   celebrateAnniversary: (data?: { anniversaryNumber?: number; anniversaryDate?: string }) =>
     api.post<GrowthRecord>('/growth/anniversary-interaction', data || {}).then(res => res.data),
+  getBuildings: () => api.get<BuildingInstance[]>('/growth/buildings').then(res => res.data),
+  getBuildingDefs: () => api.get<BuildingDefinition[]>('/growth/buildings/defs').then(res => res.data),
+  getBuildingMap: () => api.get<BuildingMapData>('/growth/buildings/map').then(res => res.data),
+  validateUnlock: (id: string) =>
+    api.get<BuildingUpgradeValidation>(`/growth/buildings/${id}/validate-unlock`).then(res => res.data),
+  validateUpgrade: (id: string) =>
+    api.get<BuildingUpgradeValidation>(`/growth/buildings/${id}/validate-upgrade`).then(res => res.data),
+  unlockBuilding: (id: string) =>
+    api.post<BuildingActionResult>(`/growth/buildings/${id}/unlock`).then(res => res.data),
+  upgradeBuilding: (id: string) =>
+    api.post<BuildingActionResult>(`/growth/buildings/${id}/upgrade`).then(res => res.data),
+  collectAllOutput: () =>
+    api.post<CollectResult>('/growth/buildings/collect').then(res => res.data),
+  collectBuildingOutput: (id: string) =>
+    api.post<CollectResult>(`/growth/buildings/${id}/collect`).then(res => res.data),
 };
 
 export const monthlyReviewApi = {

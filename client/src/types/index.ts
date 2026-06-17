@@ -384,3 +384,81 @@ export interface WishStats {
   }[];
   upcomingDeadlines: WishItem[];
 }
+
+export interface BuildingDefinition {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  category: 'love' | 'growth' | 'memory' | 'wish';
+  maxLevel: number;
+  prerequisites: string[];
+  unlockLevel: number;
+  baseCost: number;
+  costMultiplier: number;
+  baseOutput: number;
+  outputMultiplier: number;
+  outputType: 'points' | 'bonus_checkin' | 'bonus_pact' | 'badge_bonus';
+  position: { x: number; y: number };
+  unlockHint: string;
+  upgradeHints: string[];
+}
+
+export interface BuildingInstance {
+  id: string;
+  definitionId: string;
+  level: number;
+  unlocked: boolean;
+  unlockedAt?: string;
+  lastCollectedAt?: string;
+  pendingOutput: number;
+  totalOutputCollected: number;
+}
+
+export interface BuildingUpgradeValidation {
+  canUpgrade: boolean;
+  reason?: string;
+  missingPrerequisites?: string[];
+  requiredLevel?: number;
+  currentLevel?: number;
+  cost?: number;
+  currentPoints?: number;
+}
+
+export interface BuildingOutputSettlement {
+  buildingId: string;
+  buildingName: string;
+  level: number;
+  outputAmount: number;
+  outputType: string;
+  period: {
+    start: string;
+    end: string;
+  };
+}
+
+export interface BuildingMapData {
+  buildings: BuildingInstance[];
+  definitions: BuildingDefinition[];
+  totalPendingOutput: number;
+  nextUnlockable?: BuildingDefinition;
+  upgradeableCount: number;
+  outputSummary: BuildingOutputSettlement[];
+}
+
+export interface CollectResult {
+  success: boolean;
+  message: string;
+  totalCollected: number;
+  details: BuildingOutputSettlement[];
+}
+
+export interface BuildingActionResult {
+  success: boolean;
+  message: string;
+  instance?: BuildingInstance;
+  cost?: number;
+  newLevel?: number;
+  upgradeHint?: string;
+}

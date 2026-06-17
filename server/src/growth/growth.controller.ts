@@ -59,4 +59,49 @@ export class GrowthController {
       data.anniversaryDate,
     );
   }
+
+  @Get('buildings')
+  getBuildings() {
+    return this.growthService.getAllBuildings();
+  }
+
+  @Get('buildings/defs')
+  getBuildingDefs() {
+    return this.growthService.getBuildingDefs();
+  }
+
+  @Get('buildings/map')
+  getBuildingMap() {
+    return this.growthService.getBuildingMapData();
+  }
+
+  @Get('buildings/:id/validate-unlock')
+  validateUnlock(@Param('id') id: string) {
+    return this.growthService.validateBuildingUnlock(id);
+  }
+
+  @Get('buildings/:id/validate-upgrade')
+  validateUpgrade(@Param('id') id: string) {
+    return this.growthService.validateBuildingUpgrade(id);
+  }
+
+  @Post('buildings/:id/unlock')
+  unlockBuilding(@Param('id') id: string) {
+    return this.growthService.unlockBuilding(id);
+  }
+
+  @Post('buildings/:id/upgrade')
+  upgradeBuilding(@Param('id') id: string) {
+    return this.growthService.upgradeBuilding(id);
+  }
+
+  @Post('buildings/collect')
+  collectAllOutput() {
+    return this.growthService.collectOutput();
+  }
+
+  @Post('buildings/:id/collect')
+  collectBuildingOutput(@Param('id') id: string) {
+    return this.growthService.collectOutput(id);
+  }
 }
