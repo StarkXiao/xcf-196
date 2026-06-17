@@ -13,6 +13,7 @@ import TravelPlans from './pages/TravelPlans';
 import GiftPlans from './pages/GiftPlans';
 import MoodCompanion from './pages/MoodCompanion';
 import Ledger from './pages/Ledger';
+import ReadingPlans from './pages/ReadingPlans';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="travel-plans" element={<TravelPlans />} />
         <Route path="gift-plans" element={<GiftPlans />} />
         <Route path="ledger" element={<Ledger />} />
+        <Route path="reading-plans" element={<ReadingPlans />} />
         <Route path="timeline" element={<Timeline />} />
         <Route path="reminders" element={<Reminders />} />
         <Route path="monthly-review" element={<MonthlyReview />} />

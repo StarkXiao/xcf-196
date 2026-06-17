@@ -3,7 +3,7 @@ import { travelPlansApi } from '../services/api';
 import type {
   TravelPlan,
   TravelPlanStats,
-  PlanFullDetails,
+  TravelPlanFullDetails,
   TravelItinerary,
   TravelBudget,
   TravelCheckin,
@@ -94,7 +94,7 @@ function TravelPlans() {
   const [stats, setStats] = useState<TravelPlanStats | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<PlanFullDetails | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<TravelPlanFullDetails | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('itinerary');
   const [showItineraryForm, setShowItineraryForm] = useState(false);
   const [showBudgetForm, setShowBudgetForm] = useState(false);

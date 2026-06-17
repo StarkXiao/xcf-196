@@ -13,6 +13,7 @@ import { TravelPlansModule } from './travel-plans/travel-plans.module';
 import { GiftPlansModule } from './gift-plans/gift-plans.module';
 import { MoodsModule } from './moods/moods.module';
 import { LedgerModule } from './ledger/ledger.module';
+import { ReadingPlansModule } from './reading-plans/reading-plans.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { LedgerModule } from './ledger/ledger.module';
     GiftPlansModule,
     MoodsModule,
     LedgerModule,
+    ReadingPlansModule,
   ],
 })
 export class AppModule {}

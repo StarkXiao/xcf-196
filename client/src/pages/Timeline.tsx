@@ -19,6 +19,10 @@ const typeLabels: Record<string, string> = {
   gift_wrapped: '礼物已包装',
   gift_delivered: '礼物已送达',
   gift_completed: '礼物完成',
+  reading_plan_created: '共读计划',
+  reading_milestone: '阅读里程碑',
+  reading_checkin: '阅读打卡',
+  reading_thought: '阅读感想',
 };
 
 const moodMap: Record<string, { emoji: string; label: string; color: string }> = {
@@ -160,6 +164,45 @@ function Timeline() {
   const isCheckinEvent = (event: TimelineEvent) =>
     event.type === 'checkin' || event.type === 'makeup_checkin';
 
+  const isReadingEvent = (event: TimelineEvent) =>
+    event.type === 'reading_plan_created' || event.type === 'reading_milestone' ||
+    event.type === 'reading_checkin' || event.type === 'reading_thought';
+
+  const renderReadingEventMeta = (event: TimelineEvent, compact: boolean = false) => {
+    const meta = event.metadata || {};
+    const tags: string[] = [];
+
+    if (meta.planTitle) tags.push(`📚《${meta.planTitle}》`);
+    if (meta.chapterNumber) tags.push(`第${meta.chapterNumber}章`);
+    if (meta.progressPercentage != null) tags.push(`${meta.progressPercentage}%进度`);
+    if (meta.milestoneTitle) tags.push(`🏆 ${meta.milestoneTitle}`);
+    if (meta.author === 'user') tags.push('我发布');
+    if (meta.author === 'partner') tags.push('TA发布');
+    if (meta.achievedBy === 'both') tags.push('双方达成');
+    else if (meta.achievedBy === 'user') tags.push('我达成');
+    else if (meta.achievedBy === 'partner') tags.push('TA达成');
+
+    return (
+      <div className="reading-event-meta">
+        <div className="reading-event-title">
+          {event.icon} {meta.milestoneTitle || meta.planTitle || '阅读相关'}
+        </div>
+        {event.description && (
+          <div className="reading-event-desc">
+            {compact && event.description.length > 80 ? event.description.slice(0, 80) + '...' : event.description}
+          </div>
+        )}
+        {tags.length > 0 && (
+          <div className="reading-event-tags">
+            {tags.map((tag, idx) => (
+              <span key={idx} className="reading-event-tag">{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const openDetail = (event: TimelineEvent) => {
     setDetailEvent(event);
     setActivePhotoIdx(0);
@@ -283,6 +326,9 @@ function Timeline() {
           {[
             { value: 'all', label: '全部' },
             { value: 'milestone', label: '里程碑' },
+            { value: 'reading_milestone', label: '📚 阅读' },
+            { value: 'reading_checkin', label: '📖 阅读打卡' },
+            { value: 'reading_thought', label: '💭 阅读感想' },
             { value: 'anniversary', label: '纪念日' },
             { value: 'pact_created', label: '新约定' },
             { value: 'checkin', label: '打卡' },
@@ -711,6 +757,15 @@ function Timeline() {
 
                       {isCheckinEvent(event) ? (
                         renderMemoryCard(event, true)
+                      ) : isReadingEvent(event) ? (
+                        <>
+                          {renderReadingEventMeta(event, true)}
+                          {event.metadata?.growthPoints && (
+                            <div className="growth-milestone-info" style={{ background: 'rgba(243, 156, 18, 0.1)', borderLeft: '3px solid #f39c12', marginTop: '12px', padding: '8px 12px', borderRadius: '8px', fontSize: '13px' }}>
+                              🌱 +{event.metadata.growthPoints} 成长值
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <>
                           <p className="timeline-desc muted">{event.description}</p>
@@ -726,6 +781,18 @@ function Timeline() {
                         <span className="muted">{event.date}</span>
                         {isCheckinEvent(event) && (
                           <span className="timeline-view-detail">查看详情 →</span>
+                        )}
+                        {isReadingEvent(event) && event.metadata?.planId && (
+                          <span
+                            className="timeline-view-detail"
+                            onClick={e => {
+                              e.stopPropagation();
+                              navigate('/reading-plans');
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            📚 查看共读 →
+                          </span>
                         )}
                         {event.type?.startsWith('gift_') && event.metadata?.giftId && (
                           <span 
@@ -760,7 +827,13 @@ function Timeline() {
             </div>
 
             <div className="detail-body">
-              {renderMemoryCard(detailEvent, false)}
+              {isCheckinEvent(detailEvent) ? (
+                renderMemoryCard(detailEvent, false)
+              ) : isReadingEvent(detailEvent) ? (
+                renderReadingEventMeta(detailEvent, false)
+              ) : (
+                renderMemoryCard(detailEvent, false)
+              )}
 
               {detailEvent.metadata?.photos && detailEvent.metadata.photos.length > 0 && (
                 <div className="detail-photo-gallery">
@@ -1025,6 +1098,64 @@ function Timeline() {
         .timeline-type.type-gift_completed {
           background: rgba(0, 184, 148, 0.2);
           color: #00b894;
+        }
+
+        .timeline-type.type-reading_plan_created {
+          background: rgba(108, 92, 231, 0.2);
+          color: #6c5ce7;
+        }
+
+        .timeline-type.type-reading_milestone {
+          background: rgba(243, 156, 18, 0.2);
+          color: #f39c12;
+        }
+
+        .timeline-type.type-reading_checkin {
+          background: rgba(52, 152, 219, 0.2);
+          color: #3498db;
+        }
+
+        .timeline-type.type-reading_thought {
+          background: rgba(233, 30, 99, 0.2);
+          color: #e91e63;
+        }
+
+        .reading-event-meta {
+          margin-top: 12px;
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 10px;
+          border-left: 3px solid #6c5ce7;
+        }
+
+        .reading-event-title {
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 6px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .reading-event-desc {
+          font-size: 13px;
+          color: var(--text-muted);
+          line-height: 1.6;
+          margin-bottom: 8px;
+        }
+
+        .reading-event-tags {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .reading-event-tag {
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-size: 11px;
+          background: rgba(255, 255, 255, 0.06);
+          color: var(--text-muted);
         }
 
         .timeline-atmosphere-tag {

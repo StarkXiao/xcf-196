@@ -83,7 +83,7 @@ export interface Reminder {
 export interface TimelineEvent {
   id: string;
   date: string;
-  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth' | 'ledger_expense';
+  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth' | 'ledger_expense' | 'reading_plan_created' | 'reading_milestone' | 'reading_checkin' | 'reading_thought';
   title: string;
   description: string;
   icon: string;
@@ -2240,3 +2240,435 @@ export const mockSettlements: LedgerSettlement[] = [
     createdAt: new Date(currentYear, currentMonth - 1, 28).toISOString(),
   },
 ];
+
+export interface ReadingPlan {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  coverImage?: string;
+  totalChapters: number;
+  currentChapter: number;
+  status: 'planning' | 'reading' | 'completed' | 'paused' | 'abandoned';
+  category: 'novel' | 'literature' | 'philosophy' | 'self_help' | 'history' | 'science' | 'other';
+  color: string;
+  icon: string;
+  startDate: string;
+  targetDate?: string;
+  completedAt?: string;
+  dailyGoal?: number;
+  reminderEnabled: boolean;
+  reminderDaysBefore: number;
+  reminderTime: string;
+  createdBy: 'user' | 'partner';
+  createdAt: string;
+  updatedAt: string;
+  userProgress: number;
+  partnerProgress: number;
+  totalUserCheckins: number;
+  totalPartnerCheckins: number;
+  totalMutualCheckins: number;
+}
+
+export interface ReadingChapter {
+  id: string;
+  planId: string;
+  chapterNumber: number;
+  title: string;
+  description?: string;
+  pageStart?: number;
+  pageEnd?: number;
+  isMilestone: boolean;
+  milestoneTitle?: string;
+  userRead: boolean;
+  partnerRead: boolean;
+  userReadAt?: string;
+  partnerReadAt?: string;
+  createdAt: string;
+}
+
+export interface ReadingCheckin {
+  id: string;
+  planId: string;
+  chapterId: string;
+  chapterNumber: number;
+  date: string;
+  time: string;
+  checkedBy: 'user' | 'partner' | 'both';
+  notes?: string;
+  mood?: 'happy' | 'normal' | 'tired' | 'excited' | 'grateful';
+  durationMinutes?: number;
+  pagesRead?: number;
+  photos?: string[];
+  createdAt: string;
+}
+
+export interface ReadingThought {
+  id: string;
+  planId: string;
+  chapterId?: string;
+  chapterNumber?: number;
+  author: 'user' | 'partner';
+  content: string;
+  mood?: 'happy' | 'normal' | 'tired' | 'excited' | 'grateful' | 'thoughtful';
+  createdAt: string;
+  updatedAt?: string;
+  replies?: ReadingThoughtReply[];
+  likes?: number;
+  likedByPartner?: boolean;
+}
+
+export interface ReadingThoughtReply {
+  id: string;
+  thoughtId: string;
+  author: 'user' | 'partner';
+  content: string;
+  createdAt: string;
+}
+
+export interface ReadingMilestone {
+  id: string;
+  planId: string;
+  type: 'start' | 'quarter' | 'half' | 'three_quarters' | 'complete' | 'streak' | 'custom';
+  title: string;
+  description: string;
+  icon: string;
+  chapter?: number;
+  progressPercentage?: number;
+  streakDays?: number;
+  achieved: boolean;
+  achievedAt?: string;
+  achievedBy?: 'user' | 'partner' | 'both';
+  growthPoints?: number;
+  createdAt: string;
+  timelineEventId?: string;
+}
+
+export interface ReadingPlanStats {
+  total: number;
+  planning: number;
+  reading: number;
+  completed: number;
+  paused: number;
+  abandoned: number;
+  totalCheckins: number;
+  totalThoughts: number;
+  totalMilestones: number;
+  averageProgress: number;
+  byCategory: {
+    category: string;
+    label: string;
+    total: number;
+    completed: number;
+    progress: number;
+  }[];
+  thisWeekCheckins: number;
+  thisMonthCheckins: number;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+export const mockReadingPlans: ReadingPlan[] = [
+  {
+    id: 'reading-1',
+    title: '小王子',
+    author: '安托万·德·圣-埃克苏佩里',
+    description: '一本写给大人的童话，关于爱与责任的寓言',
+    coverImage: undefined,
+    totalChapters: 27,
+    currentChapter: 15,
+    status: 'reading',
+    category: 'literature',
+    color: '#f39c12',
+    icon: '📕',
+    startDate: '2026-05-01',
+    targetDate: '2026-07-01',
+    dailyGoal: 1,
+    reminderEnabled: true,
+    reminderDaysBefore: 1,
+    reminderTime: '21:00',
+    createdBy: 'user',
+    createdAt: '2026-05-01T10:00:00Z',
+    updatedAt: '2026-06-15T19:30:00Z',
+    userProgress: 56,
+    partnerProgress: 48,
+    totalUserCheckins: 15,
+    totalPartnerCheckins: 13,
+    totalMutualCheckins: 12,
+  },
+  {
+    id: 'reading-2',
+    title: '被讨厌的勇气',
+    author: '岸见一郎 / 古贺史健',
+    description: '阿德勒心理学入门，学习自我接纳与课题分离',
+    coverImage: undefined,
+    totalChapters: 5,
+    currentChapter: 5,
+    status: 'completed',
+    category: 'philosophy',
+    color: '#3498db',
+    icon: '📘',
+    startDate: '2026-03-15',
+    targetDate: '2026-05-15',
+    completedAt: '2026-05-12T20:00:00Z',
+    dailyGoal: 1,
+    reminderEnabled: true,
+    reminderDaysBefore: 1,
+    reminderTime: '20:30',
+    createdBy: 'partner',
+    createdAt: '2026-03-15T09:00:00Z',
+    updatedAt: '2026-05-12T20:00:00Z',
+    userProgress: 100,
+    partnerProgress: 100,
+    totalUserCheckins: 5,
+    totalPartnerCheckins: 5,
+    totalMutualCheckins: 5,
+  },
+  {
+    id: 'reading-3',
+    title: '百年孤独',
+    author: '加西亚·马尔克斯',
+    description: '魔幻现实主义经典，布恩迪亚家族七代人的传奇故事',
+    coverImage: undefined,
+    totalChapters: 20,
+    currentChapter: 0,
+    status: 'planning',
+    category: 'novel',
+    color: '#9b59b6',
+    icon: '📙',
+    startDate: '2026-07-01',
+    targetDate: '2026-10-01',
+    dailyGoal: 1,
+    reminderEnabled: true,
+    reminderDaysBefore: 2,
+    reminderTime: '21:30',
+    createdBy: 'user',
+    createdAt: '2026-06-10T14:00:00Z',
+    updatedAt: '2026-06-10T14:00:00Z',
+    userProgress: 0,
+    partnerProgress: 0,
+    totalUserCheckins: 0,
+    totalPartnerCheckins: 0,
+    totalMutualCheckins: 0,
+  },
+  {
+    id: 'reading-4',
+    title: '原子习惯',
+    author: '詹姆斯·克利尔',
+    description: '如何用微小的习惯改变人生',
+    coverImage: undefined,
+    totalChapters: 6,
+    currentChapter: 3,
+    status: 'paused',
+    category: 'self_help',
+    color: '#1abc9c',
+    icon: '📗',
+    startDate: '2026-04-01',
+    targetDate: '2026-06-01',
+    dailyGoal: 1,
+    reminderEnabled: false,
+    reminderDaysBefore: 1,
+    reminderTime: '22:00',
+    createdBy: 'partner',
+    createdAt: '2026-04-01T11:00:00Z',
+    updatedAt: '2026-05-20T08:00:00Z',
+    userProgress: 50,
+    partnerProgress: 50,
+    totalUserCheckins: 3,
+    totalPartnerCheckins: 3,
+    totalMutualCheckins: 3,
+  },
+];
+
+export const mockReadingChapters: ReadingChapter[] = (() => {
+  const chapters: ReadingChapter[] = [];
+  mockReadingPlans.forEach(plan => {
+    for (let i = 1; i <= plan.totalChapters; i++) {
+      const milestoneChapters = [
+        1,
+        Math.floor(plan.totalChapters * 0.25),
+        Math.floor(plan.totalChapters * 0.5),
+        Math.floor(plan.totalChapters * 0.75),
+        plan.totalChapters,
+      ];
+      const isMilestone = milestoneChapters.includes(i);
+      const isUserRead = i <= Math.floor((plan.userProgress / 100) * plan.totalChapters);
+      const isPartnerRead = i <= Math.floor((plan.partnerProgress / 100) * plan.totalChapters);
+
+      let milestoneTitle: string | undefined;
+      if (isMilestone) {
+        const pct = i / plan.totalChapters;
+        if (i === 1) milestoneTitle = '阅读启程';
+        else if (pct <= 0.25) milestoneTitle = '四分之一达成';
+        else if (pct <= 0.5) milestoneTitle = '半程突破';
+        else if (pct <= 0.75) milestoneTitle = '四分之三达成';
+        else milestoneTitle = '全书读完';
+      }
+
+      chapters.push({
+        id: `chapter-${plan.id}-${i}`,
+        planId: plan.id,
+        chapterNumber: i,
+        title: `第${i}章`,
+        description: '',
+        isMilestone,
+        milestoneTitle,
+        userRead: isUserRead,
+        partnerRead: isPartnerRead,
+        userReadAt: isUserRead ? new Date(2026, 4, i).toISOString() : undefined,
+        partnerReadAt: isPartnerRead ? new Date(2026, 4, i + 1).toISOString() : undefined,
+        createdAt: plan.createdAt,
+      });
+    }
+  });
+  return chapters;
+})();
+
+export const mockReadingCheckins: ReadingCheckin[] = [
+  {
+    id: 'reading-checkin-1',
+    planId: 'reading-1',
+    chapterId: 'chapter-reading-1-15',
+    chapterNumber: 15,
+    date: '2026-06-15',
+    time: '19:30',
+    checkedBy: 'user',
+    notes: '狐狸教小王子驯养的那段真的很感动，真正的爱就是互相牵挂',
+    mood: 'grateful',
+    durationMinutes: 45,
+    pagesRead: 32,
+    createdAt: '2026-06-15T19:30:00Z',
+  },
+  {
+    id: 'reading-checkin-2',
+    planId: 'reading-1',
+    chapterId: 'chapter-reading-1-14',
+    chapterNumber: 14,
+    date: '2026-06-14',
+    time: '21:00',
+    checkedBy: 'both',
+    notes: '一起讨论了小王子的星球，TA说每个人心里都有自己的小星球',
+    mood: 'happy',
+    durationMinutes: 60,
+    pagesRead: 28,
+    photos: [
+      'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=couple%20reading%20book%20together%20cozy%20couch%20warm%20lamp%20night&image_size=landscape_16_9',
+    ],
+    createdAt: '2026-06-14T21:00:00Z',
+  },
+  {
+    id: 'reading-checkin-3',
+    planId: 'reading-2',
+    chapterId: 'chapter-reading-2-5',
+    chapterNumber: 5,
+    date: '2026-05-12',
+    time: '20:00',
+    checkedBy: 'both',
+    notes: '终于读完了！课题分离的概念真的很重要，我们讨论了如何在关系中保持边界',
+    mood: 'excited',
+    durationMinutes: 90,
+    pagesRead: 45,
+    createdAt: '2026-05-12T20:00:00Z',
+  },
+];
+
+export const mockReadingThoughts: ReadingThought[] = [
+  {
+    id: 'thought-1',
+    planId: 'reading-1',
+    chapterId: 'chapter-reading-1-10',
+    chapterNumber: 10,
+    author: 'user',
+    content: '看到小王子和酒鬼的对话，突然想到我们有时候也在逃避一些事情。重要的是直面自己的内心，你说对吗？',
+    mood: 'thoughtful',
+    createdAt: '2026-06-05T14:20:00Z',
+    updatedAt: undefined,
+    replies: [
+      {
+        id: 'reply-1',
+        thoughtId: 'thought-1',
+        author: 'partner',
+        content: '是的，直面内心需要勇气。但有你在身边，我觉得什么都可以面对~',
+        createdAt: '2026-06-05T18:30:00Z',
+      },
+    ],
+    likes: 1,
+    likedByPartner: true,
+  },
+  {
+    id: 'thought-2',
+    planId: 'reading-1',
+    chapterId: 'chapter-reading-1-15',
+    chapterNumber: 15,
+    author: 'partner',
+    content: '狐狸说："只有用心才能看得清，本质的东西用眼睛是看不见的。" 这句话让我想到我们的关系，虽然平淡，但很真实。',
+    mood: 'grateful',
+    createdAt: '2026-06-16T09:15:00Z',
+    replies: [],
+    likes: 1,
+    likedByPartner: false,
+  },
+  {
+    id: 'thought-3',
+    planId: 'reading-2',
+    chapterId: 'chapter-reading-2-3',
+    chapterNumber: 3,
+    author: 'user',
+    content: '"课题分离"真的改变了我很多！以前总担心别人怎么看我，现在轻松多了。你有感受到变化吗？',
+    mood: 'happy',
+    createdAt: '2026-04-20T22:00:00Z',
+    replies: [
+      {
+        id: 'reply-2',
+        thoughtId: 'thought-3',
+        author: 'partner',
+        content: '当然有！你最近状态真的好了很多，我也在学习这个概念，一起加油！',
+        createdAt: '2026-04-21T07:30:00Z',
+      },
+      {
+        id: 'reply-3',
+        thoughtId: 'thought-3',
+        author: 'user',
+        content: '嗯嗯，我们一起变得更好！💪',
+        createdAt: '2026-04-21T08:00:00Z',
+      },
+    ],
+    likes: 2,
+    likedByPartner: true,
+  },
+];
+
+export const mockReadingMilestones: ReadingMilestone[] = (() => {
+  const milestones: ReadingMilestone[] = [];
+  mockReadingPlans.forEach(plan => {
+    const total = plan.totalChapters;
+    const configs = [
+      { type: 'start', chapter: 1, progress: 0, title: '开启阅读之旅', icon: '🚀', points: 5 },
+      { type: 'quarter', chapter: Math.floor(total * 0.25), progress: 25, title: '四分之一达成', icon: '🎯', points: 10 },
+      { type: 'half', chapter: Math.floor(total * 0.5), progress: 50, title: '半程突破', icon: '🔥', points: 15 },
+      { type: 'three_quarters', chapter: Math.floor(total * 0.75), progress: 75, title: '四分之三达成', icon: '💫', points: 20 },
+      { type: 'complete', chapter: total, progress: 100, title: '读完啦！', icon: '🎉', points: 50 },
+    ];
+
+    configs.forEach(config => {
+      const maxProgress = Math.max(plan.userProgress, plan.partnerProgress);
+      const achieved = maxProgress >= config.progress;
+      milestones.push({
+        id: `milestone-${plan.id}-${config.type}`,
+        planId: plan.id,
+        type: config.type as any,
+        title: `《${plan.title}》${config.title}`,
+        description: `第${config.chapter}章 / 共${total}章`,
+        icon: config.icon,
+        chapter: config.chapter,
+        progressPercentage: config.progress,
+        achieved,
+        achievedAt: achieved ? new Date(2026, 4, Math.ceil(total * config.progress / 100)).toISOString() : undefined,
+        achievedBy: achieved ? 'both' : undefined,
+        growthPoints: config.points,
+        createdAt: plan.createdAt,
+      });
+    });
+  });
+  return milestones;
+})();

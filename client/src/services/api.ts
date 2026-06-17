@@ -38,7 +38,6 @@ import type {
   TravelReminder,
   TravelPlanStats,
   BudgetStats,
-  PlanFullDetails,
   GiftPlan,
   GiftItem,
   GiftStats,
@@ -56,6 +55,15 @@ import type {
   LedgerSettlement,
   LedgerDashboardData,
   LedgerCategoryInfo,
+  ReadingPlan,
+  ReadingChapter,
+  ReadingCheckin,
+  ReadingThought,
+  ReadingThoughtReply,
+  ReadingMilestone,
+  ReadingPlanStats,
+  PlanFullDetails,
+  TravelPlanFullDetails,
 } from '../types';
 
 const api = axios.create({
@@ -267,7 +275,7 @@ export const travelPlansApi = {
     api.get<TravelPlan[]>('/travel-plans', { params: { status } }).then(res => res.data),
   findOne: (id: string) => api.get<TravelPlan>(`/travel-plans/${id}`).then(res => res.data),
   getFullDetails: (id: string) =>
-    api.get<PlanFullDetails>(`/travel-plans/${id}/full`).then(res => res.data),
+    api.get<TravelPlanFullDetails>(`/travel-plans/${id}/full`).then(res => res.data),
   create: (data: Partial<TravelPlan>) =>
     api.post<TravelPlan>('/travel-plans', data).then(res => res.data),
   update: (id: string, data: Partial<TravelPlan>) =>
@@ -418,4 +426,49 @@ export const ledgerApi = {
     api.post<LedgerSettlement>(`/ledger/settlements/${year}/${month}`).then(res => res.data),
   settle: (id: string, settledBy: 'user' | 'partner', note?: string) =>
     api.post<LedgerSettlement>(`/ledger/settlements/${id}/settle`, { settledBy, note }).then(res => res.data),
+};
+
+export const readingPlansApi = {
+  findAll: (status?: string, category?: string) =>
+    api.get<ReadingPlan[]>('/reading-plans', { params: { status, category } }).then(res => res.data),
+  findOne: (id: string) => api.get<ReadingPlan>(`/reading-plans/${id}`).then(res => res.data),
+  getFullDetails: (id: string) => api.get<PlanFullDetails>(`/reading-plans/${id}/full`).then(res => res.data),
+  create: (data: Partial<ReadingPlan> & { title: string; author: string; description: string; totalChapters: number; category: ReadingPlan['category']; createdBy: 'user' | 'partner' }) =>
+    api.post<ReadingPlan>('/reading-plans', data).then(res => res.data),
+  update: (id: string, data: Partial<ReadingPlan>) =>
+    api.patch<ReadingPlan>(`/reading-plans/${id}`, data).then(res => res.data),
+  remove: (id: string) => api.delete(`/reading-plans/${id}`),
+  getStats: () => api.get<ReadingPlanStats>('/reading-plans/stats').then(res => res.data),
+  getUpcomingReminders: (days?: number) =>
+    api.get<ReadingPlan[]>('/reading-plans/upcoming-reminders', { params: { days } }).then(res => res.data),
+
+  getChapters: (planId: string) =>
+    api.get<ReadingChapter[]>(`/reading-plans/${planId}/chapters`).then(res => res.data),
+  getChapter: (planId: string, chapterId: string) =>
+    api.get<ReadingChapter>(`/reading-plans/${planId}/chapters/${chapterId}`).then(res => res.data),
+  createChapter: (data: { planId: string; chapterNumber: number; title: string; description?: string; isMilestone?: boolean; milestoneTitle?: string }) =>
+    api.post<ReadingChapter>('/reading-plans/chapters', data).then(res => res.data),
+  updateChapter: (planId: string, chapterId: string, data: Partial<ReadingChapter>) =>
+    api.patch<ReadingChapter>(`/reading-plans/${planId}/chapters/${chapterId}`, data).then(res => res.data),
+  markChapterRead: (data: { planId: string; chapterId: string; chapterNumber: number; readBy: 'user' | 'partner'; notes?: string; mood?: ReadingCheckin['mood']; durationMinutes?: number; pagesRead?: number }) =>
+    api.post<{ chapter: ReadingChapter; checkin?: ReadingCheckin }>('/reading-plans/chapters/mark-read', data).then(res => res.data),
+
+  getCheckins: (planId: string, startDate?: string, endDate?: string) =>
+    api.get<ReadingCheckin[]>(`/reading-plans/${planId}/checkins`, { params: { startDate, endDate } }).then(res => res.data),
+  createCheckin: (data: Partial<ReadingCheckin> & { planId: string; chapterId: string; chapterNumber: number; checkedBy: 'user' | 'partner' | 'both' }) =>
+    api.post<ReadingCheckin>('/reading-plans/checkins', data).then(res => res.data),
+
+  getThoughts: (planId: string, chapterId?: string) =>
+    api.get<ReadingThought[]>(`/reading-plans/${planId}/thoughts`, { params: { chapterId } }).then(res => res.data),
+  createThought: (data: Partial<ReadingThought> & { planId: string; author: 'user' | 'partner'; content: string }) =>
+    api.post<ReadingThought>('/reading-plans/thoughts', data).then(res => res.data),
+  createThoughtReply: (data: { thoughtId: string; author: 'user' | 'partner'; content: string }) =>
+    api.post<ReadingThoughtReply>('/reading-plans/thoughts/replies', data).then(res => res.data),
+  likeThought: (id: string, likedBy: 'user' | 'partner') =>
+    api.post<ReadingThought>(`/reading-plans/thoughts/${id}/like`, { likedBy }).then(res => res.data),
+
+  getMilestones: (planId: string, achieved?: boolean) =>
+    api.get<ReadingMilestone[]>(`/reading-plans/${planId}/milestones`, { params: { achieved: achieved?.toString() } }).then(res => res.data),
+  achieveMilestone: (id: string, achievedBy: 'user' | 'partner' | 'both') =>
+    api.post<ReadingMilestone>(`/reading-plans/milestones/${id}/achieve`, { achievedBy }).then(res => res.data),
 };
