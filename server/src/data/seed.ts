@@ -68,12 +68,13 @@ export interface Reminder {
   id: string;
   title: string;
   description: string;
-  type: 'pact' | 'anniversary' | 'custom';
+  type: 'pact' | 'anniversary' | 'custom' | 'wish';
   date: string;
   time: string;
   repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   isActive: boolean;
   pactId?: string;
+  wishId?: string;
   priority?: 'critical' | 'high' | 'medium' | 'low';
   isAggregated?: boolean;
   aggregatedCount?: number;
@@ -82,11 +83,12 @@ export interface Reminder {
 export interface TimelineEvent {
   id: string;
   date: string;
-  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin';
+  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth';
   title: string;
   description: string;
   icon: string;
   pactId?: string;
+  wishId?: string;
   metadata?: Record<string, any>;
 }
 
@@ -438,6 +440,42 @@ export const mockReminders: Reminder[] = [
     repeat: 'daily',
     isActive: true,
   },
+  {
+    id: 'reminder-wish-1',
+    title: '愿望截止提醒：一起去北海道看雪',
+    description: '你们约定2026年底去北海道看雪，现在开始规划行程吧~',
+    type: 'wish',
+    date: '2026-12-24',
+    time: '09:00',
+    repeat: 'none',
+    isActive: true,
+    wishId: 'wish-1',
+    priority: 'high',
+  },
+  {
+    id: 'reminder-wish-2',
+    title: '愿望截止提醒：学会做提拉米苏',
+    description: '还有3天到约定的截止日期，记得去学习做提拉米苏哦~',
+    type: 'wish',
+    date: '2026-08-12',
+    time: '10:00',
+    repeat: 'none',
+    isActive: true,
+    wishId: 'wish-2',
+    priority: 'medium',
+  },
+  {
+    id: 'reminder-wish-3',
+    title: '愿望截止提醒：一起学习潜水',
+    description: '距离约定的考潜水证时间还有2个月，开始准备装备吧~',
+    type: 'wish',
+    date: '2026-09-17',
+    time: '09:00',
+    repeat: 'none',
+    isActive: true,
+    wishId: 'wish-4',
+    priority: 'medium',
+  },
 ];
 
 export const mockTimeline: TimelineEvent[] = [
@@ -535,6 +573,86 @@ export const mockTimeline: TimelineEvent[] = [
       growthPoints: 50,
       growthRecordId: 'growth-17',
       anniversaryNumber: 2,
+    },
+  },
+  {
+    id: 'event-wish-1',
+    date: '2024-06-01',
+    type: 'wish_created',
+    title: '许下心愿：一起去北海道看雪',
+    description: '许下了第一个双人愿望，期待有一天能一起在北海道看漫天飘雪',
+    icon: '💫',
+    wishId: 'wish-1',
+    metadata: {
+      createdBy: 'user',
+      category: 'travel',
+    },
+  },
+  {
+    id: 'event-wish-2',
+    date: '2024-08-20',
+    type: 'wish_created',
+    title: '许下心愿：学会做提拉米苏',
+    description: 'TA说想学做提拉米苏，给对方一个甜蜜的惊喜',
+    icon: '💫',
+    wishId: 'wish-2',
+    metadata: {
+      createdBy: 'partner',
+      category: 'food',
+    },
+  },
+  {
+    id: 'event-wish-3',
+    date: '2025-02-14',
+    type: 'wish_completed',
+    title: '完成心愿：写一封情书给对方',
+    description: '在情人节完成了这个浪漫的愿望，TA读完后感动得哭了',
+    icon: '💌',
+    wishId: 'wish-5',
+    metadata: {
+      completedBy: 'user',
+      completedRating: 5,
+      category: 'romance',
+    },
+  },
+  {
+    id: 'event-wish-4',
+    date: '2025-03-21',
+    type: 'wish_completed',
+    title: '完成心愿：一起看日出',
+    description: '在山顶拥抱迎接第一缕阳光，那一刻感觉全世界都是温暖的',
+    icon: '🌅',
+    wishId: 'wish-3',
+    metadata: {
+      completedBy: 'both',
+      completedRating: 5,
+      category: 'experience',
+    },
+  },
+  {
+    id: 'event-wish-5',
+    date: '2026-05-15',
+    type: 'wish_claimed',
+    title: '认领心愿：学会做提拉米苏',
+    description: '我认领了TA的愿望，准备偷偷学习做提拉米苏',
+    icon: '🤚',
+    wishId: 'wish-2',
+    metadata: {
+      claimedBy: 'user',
+      category: 'food',
+    },
+  },
+  {
+    id: 'event-wish-6',
+    date: '2025-05-20',
+    type: 'wish_claimed',
+    title: '认领心愿：一起去北海道看雪',
+    description: 'TA认领了我的愿望，开始规划北海道之旅',
+    icon: '🤚',
+    wishId: 'wish-1',
+    metadata: {
+      claimedBy: 'partner',
+      category: 'travel',
     },
   },
 ];

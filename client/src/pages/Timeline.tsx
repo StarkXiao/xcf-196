@@ -646,7 +646,7 @@ function Timeline() {
                             </span>
                           )}
                         </div>
-                        <span className={`timeline-type ${event.type === 'makeup_checkin' ? 'type-makeup' : ''} ${event.type === 'anniversary' ? 'type-anniversary' : ''}`}>{typeLabels[event.type]}</span>
+                        <span className={`timeline-type type-${event.type} ${event.type === 'makeup_checkin' ? 'type-makeup' : ''} ${event.type === 'anniversary' ? 'type-anniversary' : ''}`}>{typeLabels[event.type]}</span>
                       </div>
 
                       {isCheckinEvent(event) ? (
@@ -913,6 +913,21 @@ function Timeline() {
         .timeline-type.type-anniversary {
           background: rgba(233, 30, 99, 0.2);
           color: #e91e63;
+        }
+
+        .timeline-type.type-wish_created {
+          background: rgba(108, 92, 231, 0.2);
+          color: #6c5ce7;
+        }
+
+        .timeline-type.type-wish_claimed {
+          background: rgba(253, 203, 110, 0.2);
+          color: #fdcb6e;
+        }
+
+        .timeline-type.type-wish_completed {
+          background: rgba(0, 184, 148, 0.2);
+          color: #00b894;
         }
 
         .timeline-atmosphere-tag {

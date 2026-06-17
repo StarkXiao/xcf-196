@@ -1,13 +1,84 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateWishDto } from './dto/create-wish.dto';
 import { UpdateWishDto } from './dto/update-wish.dto';
 import { WishItem } from './entities/wish-item.entity';
 import { mockWishes } from '../data/seed';
+import { TimelineService } from '../timeline/timeline.service';
+import { RemindersService } from '../reminders/reminders.service';
 
 @Injectable()
 export class WishlistService {
   private wishes: WishItem[] = [...mockWishes];
+
+  constructor(
+    @Inject(forwardRef(() => TimelineService))
+    private readonly timelineService: TimelineService,
+    @Inject(forwardRef(() => RemindersService))
+    private readonly remindersService: RemindersService,
+  ) {}
+
+  private readonly categoryLabels: Record<string, string> = {
+    travel: '旅行',
+    food: '美食',
+    experience: '体验',
+    growth: '成长',
+    romance: '浪漫',
+    other: '其他',
+  };
+
+  private getReminderDate(deadline: string, daysBefore: number): string {
+    const date = new Date(deadline);
+    date.setDate(date.getDate() - daysBefore);
+    return date.toISOString().split('T')[0];
+  }
+
+  private ensureWishReminder(wish: WishItem): void {
+    if (!wish.deadline || !wish.reminderEnabled) return;
+    try {
+      const reminderDate = this.getReminderDate(wish.deadline, wish.reminderDaysBefore);
+      const today = new Date().toISOString().split('T')[0];
+      if (reminderDate < today) return;
+
+      const existingReminders = this.remindersService.findAll(true);
+      const existing = existingReminders.find(
+        r => r.wishId === wish.id && r.type === 'wish',
+      );
+      if (existing) {
+        this.remindersService.update(existing.id, {
+          title: `愿望截止提醒：${wish.title}`,
+          description: `距离「${wish.title}」的截止日期还有 ${wish.reminderDaysBefore} 天，记得去完成哦~`,
+          date: reminderDate,
+        });
+      } else {
+        this.remindersService.create({
+          title: `愿望截止提醒：${wish.title}`,
+          description: `距离「${wish.title}」的截止日期还有 ${wish.reminderDaysBefore} 天，记得去完成哦~`,
+          type: 'wish',
+          date: reminderDate,
+          time: '09:00',
+          repeat: 'none',
+          isActive: true,
+          wishId: wish.id,
+          priority: wish.category === 'romance' ? 'high' : 'medium',
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private deactivateWishReminder(wishId: string): void {
+    try {
+      const reminders = this.remindersService.findAll(true);
+      const wishReminders = reminders.filter(r => r.wishId === wishId);
+      wishReminders.forEach(r => {
+        this.remindersService.update(r.id, { isActive: false });
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
 
   findAll(status?: string, category?: string): WishItem[] {
     let result = [...this.wishes];
@@ -50,18 +121,45 @@ export class WishlistService {
       updatedAt: now,
     };
     this.wishes.push(newWish);
+
+    try {
+      this.timelineService.create({
+        type: 'wish_created',
+        title: `许下心愿：${newWish.title}`,
+        description: newWish.description || `${newWish.createdBy === 'user' ? '我' : 'TA'}许下了一个${this.categoryLabels[newWish.category]}愿望`,
+        icon: newWish.icon,
+        wishId: newWish.id,
+        date: now.split('T')[0],
+        metadata: {
+          createdBy: newWish.createdBy,
+          category: newWish.category,
+          color: newWish.color,
+        },
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    this.ensureWishReminder(newWish);
+
     return newWish;
   }
 
   update(id: string, dto: UpdateWishDto): WishItem {
     const wish = this.findOne(id);
     const index = this.wishes.findIndex(w => w.id === id);
-    this.wishes[index] = {
+    const updatedWish: WishItem = {
       ...wish,
       ...dto,
       updatedAt: new Date().toISOString(),
     };
-    return this.wishes[index];
+    this.wishes[index] = updatedWish;
+
+    if (dto.deadline || dto.reminderEnabled !== undefined || dto.reminderDaysBefore) {
+      this.ensureWishReminder(updatedWish);
+    }
+
+    return updatedWish;
   }
 
   claim(id: string, claimedBy: 'user' | 'partner'): WishItem {
@@ -70,13 +168,34 @@ export class WishlistService {
       throw new BadRequestException(`「${wish.title}」当前状态不允许认领`);
     }
     const index = this.wishes.findIndex(w => w.id === id);
-    this.wishes[index] = {
+    const updatedWish: WishItem = {
       ...wish,
       status: 'claimed',
       claimedBy,
       updatedAt: new Date().toISOString(),
     };
-    return this.wishes[index];
+    this.wishes[index] = updatedWish;
+
+    const now = new Date().toISOString();
+    try {
+      this.timelineService.create({
+        type: 'wish_claimed',
+        title: `认领心愿：${wish.title}`,
+        description: `${claimedBy === 'user' ? '我' : 'TA'}认领了「${wish.title}」这个愿望，准备开始行动啦！`,
+        icon: '🤚',
+        wishId: wish.id,
+        date: now.split('T')[0],
+        metadata: {
+          claimedBy,
+          category: wish.category,
+          color: wish.color,
+        },
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    return updatedWish;
   }
 
   progress(id: string, amount: number): WishItem {
@@ -101,17 +220,45 @@ export class WishlistService {
     if (wish.status !== 'in_progress' && wish.status !== 'claimed') {
       throw new BadRequestException(`「${wish.title}」当前状态不允许标记完成`);
     }
+    const now = new Date().toISOString();
     const index = this.wishes.findIndex(w => w.id === id);
-    this.wishes[index] = {
+    const updatedWish: WishItem = {
       ...wish,
       status: 'completed',
       progress: wish.targetProgress,
-      completedAt: new Date().toISOString(),
+      completedAt: now,
       completedReview: review,
       completedRating: rating,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     };
-    return this.wishes[index];
+    this.wishes[index] = updatedWish;
+
+    try {
+      const ratingStars = rating ? '⭐'.repeat(rating) : '';
+      this.timelineService.create({
+        type: 'wish_completed',
+        title: `完成心愿：${wish.title}`,
+        description: review
+          ? `${ratingStars} ${review}`
+          : `太好了！「${wish.title}」这个愿望已经实现了！`,
+        icon: wish.icon,
+        wishId: wish.id,
+        date: now.split('T')[0],
+        metadata: {
+          completedBy: wish.claimedBy,
+          completedRating: rating,
+          completedReview: review,
+          category: wish.category,
+          color: wish.color,
+        },
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    this.deactivateWishReminder(wish.id);
+
+    return updatedWish;
   }
 
   abandon(id: string): WishItem {
@@ -120,17 +267,22 @@ export class WishlistService {
       throw new BadRequestException(`「${wish.title}」当前状态不允许放弃`);
     }
     const index = this.wishes.findIndex(w => w.id === id);
-    this.wishes[index] = {
+    const updatedWish: WishItem = {
       ...wish,
       status: 'abandoned',
       updatedAt: new Date().toISOString(),
     };
-    return this.wishes[index];
+    this.wishes[index] = updatedWish;
+
+    this.deactivateWishReminder(wish.id);
+
+    return updatedWish;
   }
 
   remove(id: string): void {
-    this.findOne(id);
+    const wish = this.findOne(id);
     this.wishes = this.wishes.filter(w => w.id !== id);
+    this.deactivateWishReminder(wish.id);
   }
 
   getStats() {

@@ -34,6 +34,7 @@ export class RemindersService {
   private readonly TYPE_PRIORITY: Record<string, 'critical' | 'high' | 'medium' | 'low'> = {
     anniversary: 'critical',
     pact: 'high',
+    wish: 'high',
     custom: 'medium',
   };
 
@@ -118,6 +119,9 @@ export class RemindersService {
       return notifications.anniversaryReminder !== false;
     }
     if (reminder.type === 'pact') {
+      return notifications.pactReminder !== false;
+    }
+    if (reminder.type === 'wish') {
       return notifications.pactReminder !== false;
     }
     if (reminder.type === 'custom') {

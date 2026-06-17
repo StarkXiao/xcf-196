@@ -3,11 +3,13 @@ import { TimelineService } from './timeline.service';
 import { TimelineController } from './timeline.controller';
 import { UsersModule } from '../users/users.module';
 import { PactsModule } from '../pacts/pacts.module';
+import { WishlistModule } from '../wishlist/wishlist.module';
 
 @Module({
   imports: [
     forwardRef(() => UsersModule),
     forwardRef(() => PactsModule),
+    forwardRef(() => WishlistModule),
   ],
   controllers: [TimelineController],
   providers: [TimelineService],

@@ -78,12 +78,13 @@ export interface Reminder {
   id: string;
   title: string;
   description: string;
-  type: 'pact' | 'anniversary' | 'custom';
+  type: 'pact' | 'anniversary' | 'custom' | 'wish';
   date: string;
   time: string;
   repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   isActive: boolean;
   pactId?: string;
+  wishId?: string;
   priority?: 'critical' | 'high' | 'medium' | 'low';
   isAggregated?: boolean;
   aggregatedCount?: number;
@@ -92,11 +93,12 @@ export interface Reminder {
 export interface TimelineEvent {
   id: string;
   date: string;
-  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin';
+  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth';
   title: string;
   description: string;
   icon: string;
   pactId?: string;
+  wishId?: string;
   metadata?: Record<string, any>;
 }
 

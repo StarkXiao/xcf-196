@@ -14,6 +14,7 @@ const typeLabels: Record<string, string> = {
   pact: '约定提醒',
   anniversary: '纪念日',
   custom: '自定义',
+  wish: '愿望提醒',
 };
 
 function Reminders() {
@@ -138,10 +139,10 @@ function Reminders() {
         {reminders.map(reminder => {
           const pact = getPact(reminder.pactId);
           return (
-            <div key={reminder.id} className={`reminder-card card ${!reminder.isActive ? 'inactive' : ''}`}>
+            <div key={reminder.id} className={`reminder-card card type-${reminder.type} ${!reminder.isActive ? 'inactive' : ''}`}>
               <div className="reminder-card-header">
                 <div className="reminder-icon">
-                  {reminder.type === 'anniversary' ? '💕' : reminder.type === 'pact' ? '✨' : '📌'}
+                  {reminder.type === 'anniversary' ? '💕' : reminder.type === 'pact' ? '✨' : reminder.type === 'wish' ? '💫' : '📌'}
                 </div>
                 <div className="reminder-info">
                   <h3 className="reminder-title">{reminder.title}</h3>
@@ -425,6 +426,30 @@ function Reminders() {
           background: rgba(108, 92, 231, 0.2);
           color: var(--secondary);
           font-size: 11px;
+        }
+
+        .reminder-card.type-anniversary .reminder-icon,
+        .reminder-card.type-anniversary .badge-type {
+          background: rgba(233, 30, 99, 0.15);
+          color: #e91e63;
+        }
+
+        .reminder-card.type-pact .reminder-icon,
+        .reminder-card.type-pact .badge-type {
+          background: rgba(108, 92, 231, 0.15);
+          color: #6c5ce7;
+        }
+
+        .reminder-card.type-wish .reminder-icon,
+        .reminder-card.type-wish .badge-type {
+          background: rgba(108, 92, 231, 0.15);
+          color: #6c5ce7;
+        }
+
+        .reminder-card.type-custom .reminder-icon,
+        .reminder-card.type-custom .badge-type {
+          background: rgba(116, 185, 255, 0.15);
+          color: #74b9ff;
         }
 
         .reminder-actions {
