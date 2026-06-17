@@ -328,19 +328,62 @@ export class LedgerService {
   private updateSpecialDayBudgetUsed(record: LedgerRecord): void {
     if (!record.isSpecialDay || record.type !== 'expense') return;
     
-    const today = record.date;
-    const budget = this.specialDayBudgets.find(b => 
-      b.isActive && b.date === today
-    );
+    let budget: SpecialDayBudget | undefined;
+    
+    if (record.linkedAnniversaryId) {
+      budget = this.specialDayBudgets.find(b => 
+        b.isActive && b.linkedAnniversaryId === record.linkedAnniversaryId
+      );
+    }
+    
+    if (!budget) {
+      const today = record.date;
+      budget = this.specialDayBudgets.find(b => 
+        b.isActive && b.date === today
+      );
+    }
     
     if (budget) {
       const index = this.specialDayBudgets.findIndex(b => b.id === budget.id);
       const newUsed = budget.usedAmount + record.amount;
+      const remaining = budget.budget - newUsed;
       this.specialDayBudgets[index] = {
         ...budget,
         usedAmount: newUsed,
-        remaining: budget.budget - newUsed,
+        remaining,
       };
+      
+      if (remaining < 0 && budget.remaining >= 0) {
+        try {
+          this.remindersService.create({
+            title: `⚠️ ${budget.title}预算超支`,
+            description: `「${budget.title}」预算已超支 ¥${Math.abs(remaining).toFixed(2)}，当前已花费 ¥${newUsed.toFixed(2)}，预算 ¥${budget.budget.toFixed(2)}`,
+            type: 'custom',
+            date: new Date().toISOString().split('T')[0],
+            time: '20:00',
+            repeat: 'none',
+            isActive: true,
+            priority: 'high',
+          } as any);
+        } catch (e) {
+          // ignore
+        }
+      } else if (remaining < budget.budget * 0.3 && budget.remaining >= budget.budget * 0.3) {
+        try {
+          this.remindersService.create({
+            title: `📊 ${budget.title}预算即将用完`,
+            description: `「${budget.title}」预算已使用 70%，剩余 ¥${remaining.toFixed(2)}，请合理安排消费`,
+            type: 'custom',
+            date: new Date().toISOString().split('T')[0],
+            time: '20:00',
+            repeat: 'none',
+            isActive: true,
+            priority: 'medium',
+          } as any);
+        } catch (e) {
+          // ignore
+        }
+      }
     }
   }
 
@@ -382,6 +425,29 @@ export class LedgerService {
     };
     
     this.settlements.push(newSettlement);
+    
+    try {
+      const owesAmount = Math.max(newSettlement.userOwes, newSettlement.partnerOwes);
+      const owesText = newSettlement.userOwes > 0 
+        ? `我需要付给TA ¥${owesAmount.toFixed(2)}`
+        : newSettlement.partnerOwes > 0
+          ? `TA需要付给我 ¥${owesAmount.toFixed(2)}`
+          : '本月两清，无需转账';
+      
+      this.remindersService.create({
+        title: `📊 ${year}年${month}月账单待结算`,
+        description: `本月总支出 ¥${summary.totalExpense.toFixed(2)}，总收入 ¥${summary.totalIncome.toFixed(2)}。${owesText}，请及时结算。`,
+        type: 'custom',
+        date: new Date().toISOString().split('T')[0],
+        time: '20:00',
+        repeat: 'none',
+        isActive: true,
+        priority: 'high',
+      } as any);
+    } catch (e) {
+      // ignore
+    }
+    
     return newSettlement;
   }
 
@@ -398,6 +464,29 @@ export class LedgerService {
     };
     
     this.settlements[index] = updated;
+    
+    try {
+      const owesAmount = Math.max(settlement.userOwes, settlement.partnerOwes);
+      const settledText = settlement.userOwes > 0 
+        ? `${settledBy === 'user' ? '我' : 'TA'}已支付 ¥${owesAmount.toFixed(2)} 给对方`
+        : settlement.partnerOwes > 0
+          ? `${settledBy === 'user' ? '我' : 'TA'}已收到 ¥${owesAmount.toFixed(2)} 转账`
+          : '本月两清，无需转账';
+      
+      this.remindersService.create({
+        title: `✅ ${settlement.year}年${settlement.month}月账单已结清`,
+        description: `${settledText}，${note ? '备注：' + note : ''}`,
+        type: 'custom',
+        date: new Date().toISOString().split('T')[0],
+        time: '20:00',
+        repeat: 'none',
+        isActive: true,
+        priority: 'medium',
+      } as any);
+    } catch (e) {
+      // ignore
+    }
+    
     return updated;
   }
 
@@ -410,6 +499,9 @@ export class LedgerService {
       .slice(0, 10);
     
     const specialDayBudgets = this.getSpecialDayBudgets(true);
+    
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    this.createMonthlySettlement(lastMonth.getFullYear(), lastMonth.getMonth() + 1);
     
     const pendingSettlement = this.settlements
       .filter(s => s.status === 'pending')

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ledgerApi } from '../services/api';
+import { ledgerApi, countdownApi, remindersApi } from '../services/api';
 import type {
   LedgerRecord,
   LedgerDashboardData,
@@ -8,6 +8,7 @@ import type {
   LedgerSettlement,
   LedgerMonthSummary,
   LedgerCategory,
+  CountdownItem,
 } from '../types';
 
 type TabType = 'records' | 'stats' | 'budgets' | 'settlements';
@@ -26,6 +27,8 @@ function Ledger() {
   const [budgets, setBudgets] = useState<SpecialDayBudget[]>([]);
   const [settlements, setSettlements] = useState<LedgerSettlement[]>([]);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [anniversaries, setAnniversaries] = useState<CountdownItem[]>([]);
+  const [showReminder, setShowReminder] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -43,15 +46,21 @@ function Ledger() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    loadRecords();
+  }, [filterType, filterCategory]);
+
   const loadData = async () => {
     try {
-      const [dashboard, cats] = await Promise.all([
+      const [dashboard, cats, annivs] = await Promise.all([
         ledgerApi.getDashboard(),
         ledgerApi.getCategories(),
+        countdownApi.findAll(),
       ]);
       setDashboardData(dashboard);
       setCategories(cats);
       setRecords(dashboard.recentRecords);
+      setAnniversaries(annivs.filter(a => a.type === 'anniversary'));
     } catch (error) {
       console.error('加载账本数据失败', error);
     }
@@ -137,7 +146,21 @@ function Ledger() {
 
   const handleSettle = async (id: string) => {
     try {
-      await ledgerApi.settle(id, 'user', '已结算');
+      const settlement = await ledgerApi.settle(id, 'user', '已结算');
+      await remindersApi.create({
+        title: `${settlement.year}年${settlement.month}月账单已结清`,
+        description: settlement.userOwes > 0 
+          ? `我已支付 ${formatAmount(settlement.userOwes)} 给TA，本月账单已结清`
+          : settlement.partnerOwes > 0
+            ? `TA已支付 ${formatAmount(settlement.partnerOwes)} 给我，本月账单已结清`
+            : '本月两清，无需转账，账单已结清',
+        type: 'custom',
+        date: new Date().toISOString().split('T')[0],
+        time: '20:00',
+        repeat: 'none',
+        isActive: true,
+        priority: 'medium',
+      } as any);
       loadSettlements();
       loadData();
     } catch (error) {
@@ -181,6 +204,94 @@ function Ledger() {
         <h1 className="page-title">共同账本</h1>
         <p className="page-subtitle">记录每一笔共同的回忆 💕</p>
       </div>
+
+      {showReminder && dashboardData.pendingSettlement && (
+        <div className="alert-card warning" style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ fontSize: '24px' }}>📊</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+                {dashboardData.pendingSettlement.year}年{dashboardData.pendingSettlement.month}月账单待结算
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                {dashboardData.pendingSettlement.userOwes > 0
+                  ? `我需要付给TA ${formatAmount(dashboardData.pendingSettlement.userOwes)}`
+                  : dashboardData.pendingSettlement.partnerOwes > 0
+                    ? `TA需要付给我 ${formatAmount(dashboardData.pendingSettlement.partnerOwes)}`
+                    : '本月两清，无需转账'}
+              </div>
+              <button 
+                className="btn-primary" 
+                style={{ padding: '6px 16px', fontSize: '13px' }}
+                onClick={() => setActiveTab('settlements')}
+              >
+                去结算
+              </button>
+            </div>
+            <button 
+              className="modal-close" 
+              style={{ width: '24px', height: '24px', fontSize: '14px' }}
+              onClick={() => setShowReminder(false)}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showReminder && budgets.some(b => b.remaining < 0) && (
+        <div className="alert-card danger" style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ fontSize: '24px' }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+                预算超支提醒
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                {budgets.filter(b => b.remaining < 0).map(b => (
+                  <span key={b.id} style={{ marginRight: '12px' }}>
+                    {b.icon} {b.title} 超支 {formatAmount(Math.abs(b.remaining))}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button 
+              className="modal-close" 
+              style={{ width: '24px', height: '24px', fontSize: '14px' }}
+              onClick={() => setShowReminder(false)}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showReminder && budgets.some(b => b.remaining >= 0 && b.remaining < b.budget * 0.3 && b.remaining > 0) && (
+        <div className="alert-card info" style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ fontSize: '24px' }}>📊</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+                预算即将用完
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                {budgets.filter(b => b.remaining >= 0 && b.remaining < b.budget * 0.3 && b.remaining > 0).map(b => (
+                  <span key={b.id} style={{ marginRight: '12px' }}>
+                    {b.icon} {b.title} 剩余 {formatAmount(b.remaining)}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button 
+              className="modal-close" 
+              style={{ width: '24px', height: '24px', fontSize: '14px' }}
+              onClick={() => setShowReminder(false)}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="stats-overview">
         <div className="stat-card card">
@@ -273,6 +384,8 @@ function Ledger() {
         <AddRecordModal
           record={editingRecord}
           categories={categories}
+          budgets={budgets}
+          anniversaries={anniversaries}
           onClose={() => setShowAddModal(false)}
           onSave={handleSaveRecord}
         />
@@ -280,6 +393,7 @@ function Ledger() {
 
       {showBudgetModal && (
         <BudgetModal
+          anniversaries={anniversaries}
           onClose={() => setShowBudgetModal(false)}
           onSave={async (data) => {
             try {
@@ -1130,6 +1244,28 @@ function Ledger() {
           color: var(--text-color);
           background: rgba(108, 92, 231, 0.05);
         }
+
+        .alert-card {
+          padding: 16px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+        }
+
+        .alert-card.warning {
+          background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.1));
+          border-color: rgba(255, 193, 7, 0.3);
+        }
+
+        .alert-card.danger {
+          background: linear-gradient(135deg, rgba(244, 67, 54, 0.15), rgba(255, 87, 34, 0.1));
+          border-color: rgba(244, 67, 54, 0.3);
+        }
+
+        .alert-card.info {
+          background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(103, 58, 183, 0.1));
+          border-color: rgba(33, 150, 243, 0.3);
+        }
       `}</style>
     </div>
   );
@@ -1461,11 +1597,15 @@ function SettlementsTab({
 function AddRecordModal({
   record,
   categories,
+  budgets,
+  anniversaries,
   onClose,
   onSave,
 }: {
   record: LedgerRecord | null;
   categories: LedgerCategoryInfo[];
+  budgets: SpecialDayBudget[];
+  anniversaries: CountdownItem[];
   onClose: () => void;
   onSave: (data: Partial<LedgerRecord>) => void;
 }) {
@@ -1477,10 +1617,13 @@ function AddRecordModal({
   const [paidBy, setPaidBy] = useState<'user' | 'partner' | 'split'>(record?.paidBy || 'split');
   const [description, setDescription] = useState(record?.description || '');
   const [isSpecialDay, setIsSpecialDay] = useState(record?.isSpecialDay || false);
+  const [linkedBudgetId, setLinkedBudgetId] = useState<string>(record?.linkedAnniversaryId || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !amount) return;
+
+    const linkedBudget = budgets.find(b => b.id === linkedBudgetId);
 
     onSave({
       title,
@@ -1490,7 +1633,9 @@ function AddRecordModal({
       date,
       paidBy,
       description,
-      isSpecialDay,
+      isSpecialDay: isSpecialDay || !!linkedBudgetId,
+      linkedAnniversaryId: linkedBudgetId || undefined,
+      linkedAnniversaryTitle: linkedBudget?.title,
     });
   };
 
@@ -1614,12 +1759,58 @@ function AddRecordModal({
               <input
                 type="checkbox"
                 checked={isSpecialDay}
-                onChange={(e) => setIsSpecialDay(e.target.checked)}
+                onChange={(e) => {
+                  setIsSpecialDay(e.target.checked);
+                  if (!e.target.checked) {
+                    setLinkedBudgetId('');
+                  }
+                }}
                 style={{ marginRight: '8px' }}
               />
               标记为特殊日消费
             </label>
           </div>
+
+          {isSpecialDay && budgets.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">关联纪念日预算（可选）</label>
+              <select
+                className="form-select"
+                value={linkedBudgetId}
+                onChange={(e) => setLinkedBudgetId(e.target.value)}
+              >
+                <option value="">不关联具体预算</option>
+                {budgets.filter(b => b.isActive).map(budget => (
+                  <option key={budget.id} value={budget.id}>
+                    {budget.icon} {budget.title} - 剩余 {formatAmount(budget.remaining)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {isSpecialDay && anniversaries.length > 0 && !linkedBudgetId && (
+            <div className="form-group">
+              <label className="form-label">或选择纪念日（自动创建预算）</label>
+              <select
+                className="form-select"
+                value=""
+                onChange={(e) => {
+                  const anniv = anniversaries.find(a => a.id === e.target.value);
+                  if (anniv) {
+                    setLinkedBudgetId(anniv.id);
+                  }
+                }}
+              >
+                <option value="">选择纪念日...</option>
+                {anniversaries.map(anniv => (
+                  <option key={anniv.id} value={anniv.id}>
+                    {anniv.icon} {anniv.title} - {anniv.daysLeft}天后
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="form-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>
@@ -1636,9 +1827,11 @@ function AddRecordModal({
 }
 
 function BudgetModal({
+  anniversaries,
   onClose,
   onSave,
 }: {
+  anniversaries: CountdownItem[];
   onClose: () => void;
   onSave: (data: {
     title: string;
@@ -1646,6 +1839,7 @@ function BudgetModal({
     budget: number;
     date: string;
     type: SpecialDayBudget['type'];
+    linkedAnniversaryId?: string;
     color?: string;
     icon?: string;
   }) => void;
@@ -1655,6 +1849,7 @@ function BudgetModal({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [type, setType] = useState<SpecialDayBudget['type']>('anniversary');
   const [description, setDescription] = useState('');
+  const [linkedAnniversaryId, setLinkedAnniversaryId] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1675,14 +1870,19 @@ function BudgetModal({
       custom: '🎯',
     };
 
+    const selectedAnniversary = anniversaries.find(a => a.id === linkedAnniversaryId);
+
     onSave({
-      title,
-      description,
+      title: selectedAnniversary ? `${selectedAnniversary.title}预算` : title,
+      description: selectedAnniversary 
+        ? `为${selectedAnniversary.title}设置的专属预算\n${description || ''}` 
+        : description,
       budget: parseFloat(budget),
-      date,
+      date: selectedAnniversary ? selectedAnniversary.targetDate : date,
       type,
-      color: colors[type],
-      icon: icons[type],
+      linkedAnniversaryId: linkedAnniversaryId || undefined,
+      color: selectedAnniversary?.color || colors[type],
+      icon: selectedAnniversary?.icon || icons[type],
     });
   };
 
@@ -1746,7 +1946,12 @@ function BudgetModal({
                   key={opt.value}
                   type="button"
                   className={`category-option ${type === opt.value ? 'active' : ''}`}
-                  onClick={() => setType(opt.value)}
+                  onClick={() => {
+                    setType(opt.value);
+                    if (opt.value !== 'anniversary') {
+                      setLinkedAnniversaryId('');
+                    }
+                  }}
                 >
                   <span className="category-option-icon">{opt.icon}</span>
                   <span className="category-option-label">{opt.label}</span>
@@ -1754,6 +1959,36 @@ function BudgetModal({
               ))}
             </div>
           </div>
+
+          {type === 'anniversary' && anniversaries.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">关联纪念日（可选）</label>
+              <select
+                className="form-select"
+                value={linkedAnniversaryId}
+                onChange={(e) => {
+                  setLinkedAnniversaryId(e.target.value);
+                  const anniv = anniversaries.find(a => a.id === e.target.value);
+                  if (anniv) {
+                    setTitle(anniv.title);
+                    setDate(anniv.targetDate);
+                  }
+                }}
+              >
+                <option value="">不关联纪念日</option>
+                {anniversaries.map(anniv => (
+                  <option key={anniv.id} value={anniv.id}>
+                    {anniv.icon} {anniv.title} - {anniv.daysLeft}天后
+                  </option>
+                ))}
+              </select>
+              {linkedAnniversaryId && (
+                <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  💡 选择纪念日后将自动填充名称和日期
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">备注</label>
