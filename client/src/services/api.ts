@@ -19,6 +19,9 @@ import type {
   GrowthLevel,
   Badge,
   MonthlyReviewData,
+  TrendStats,
+  PactStatsExtended,
+  PeriodUnit,
 } from '../types';
 
 const api = axios.create({
@@ -54,11 +57,12 @@ export const pactsApi = {
     api.get<Pact[]>('/pacts/paused-with-resume').then(res => res.data),
   remove: (id: string) => api.delete(`/pacts/${id}`),
   getStats: () => api.get<PactStats>('/pacts/stats').then(res => res.data),
+  getStatsExtended: () => api.get<PactStatsExtended>('/pacts/stats-extended').then(res => res.data),
 };
 
 export const checkinsApi = {
-  findAll: (pactId?: string, startDate?: string, endDate?: string) =>
-    api.get<Checkin[]>('/checkins', { params: { pactId, startDate, endDate } }).then(res => res.data),
+  findAll: (pactId?: string, startDate?: string, endDate?: string, category?: string, checkedBy?: string) =>
+    api.get<Checkin[]>('/checkins', { params: { pactId, startDate, endDate, category, checkedBy } }).then(res => res.data),
   findOne: (id: string) => api.get<Checkin>(`/checkins/${id}`).then(res => res.data),
   create: (data: Partial<Checkin>) =>
     api.post<Checkin>('/checkins', data).then(res => res.data),
@@ -80,11 +84,31 @@ export const checkinsApi = {
   remove: (id: string) => api.delete(`/checkins/${id}`),
   getStats: (pactId?: string) =>
     api.get<CheckinStats>('/checkins/stats', { params: { pactId } }).then(res => res.data),
+  getTrendStats: (
+    period?: PeriodUnit,
+    periods?: number,
+    pactId?: string,
+    category?: string,
+    checkedBy?: 'user' | 'partner' | 'both',
+  ) =>
+    api.get<TrendStats>('/checkins/trend', {
+      params: { period, periods, pactId, category, checkedBy },
+    }).then(res => res.data),
 };
 
 export const timelineApi = {
-  findAll: (type?: string, limit?: number) =>
-    api.get<TimelineEvent[]>('/timeline', { params: { type, limit } }).then(res => res.data),
+  findAll: (
+    type?: string,
+    limit?: number,
+    pactId?: string,
+    category?: string,
+    checkedBy?: string,
+    startDate?: string,
+    endDate?: string,
+  ) =>
+    api.get<TimelineEvent[]>('/timeline', {
+      params: { type, limit, pactId, category, checkedBy, startDate, endDate },
+    }).then(res => res.data),
   findOne: (id: string) => api.get<TimelineEvent>(`/timeline/${id}`).then(res => res.data),
   create: (data: Partial<TimelineEvent>) =>
     api.post<TimelineEvent>('/timeline', data).then(res => res.data),

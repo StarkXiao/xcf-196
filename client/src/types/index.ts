@@ -276,3 +276,66 @@ export interface GrowthStats {
   unlockedBadgesCount: number;
   totalBadgesCount: number;
 }
+
+export type PeriodUnit = 'day' | 'week' | 'month';
+
+export interface TrendPoint {
+  period: string;
+  periodStart: string;
+  periodEnd: string;
+  total: number;
+  completed: number;
+  completionRate: number;
+  makeupCount: number;
+  userCount: number;
+  partnerCount: number;
+  bothCount: number;
+}
+
+export interface CategoryBreakdown {
+  category: 'daily' | 'weekly' | 'monthly' | 'special';
+  categoryLabel: string;
+  total: number;
+  completed: number;
+  completionRate: number;
+  activePacts: number;
+  color: string;
+}
+
+export interface CheckedByBreakdown {
+  checkedBy: 'user' | 'partner' | 'both';
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface TrendStats {
+  period: PeriodUnit;
+  periods: number;
+  startDate: string;
+  endDate: string;
+  trend: TrendPoint[];
+  categoryBreakdown: CategoryBreakdown[];
+  checkedByBreakdown: CheckedByBreakdown[];
+  overallCompletionRate: number;
+  totalCheckins: number;
+  totalMakeup: number;
+  averagePerPeriod: number;
+}
+
+export interface PactCategoryStats {
+  category: 'daily' | 'weekly' | 'monthly' | 'special';
+  label: string;
+  total: number;
+  active: number;
+  completed: number;
+  paused: number;
+  pendingConfirmation: number;
+  totalCheckins: number;
+  avgCompletionRate: number;
+  color: string;
+}
+
+export interface PactStatsExtended extends PactStats {
+  byCategory: PactCategoryStats[];
+}

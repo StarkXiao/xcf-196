@@ -1,12 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { pactsApi, checkinsApi, timelineApi, remindersApi, countdownApi, growthApi } from '../services/api';
-import type { Pact, Checkin, TimelineEvent, Reminder, PactStats, CheckinStats, CountdownItem, GrowthStats, GrowthRecord, Badge } from '../types';
+import type {
+  Pact,
+  Checkin,
+  TimelineEvent,
+  Reminder,
+  PactStats,
+  CheckinStats,
+  CountdownItem,
+  GrowthStats,
+  GrowthRecord,
+  Badge,
+  TrendStats,
+  PactStatsExtended,
+  PeriodUnit,
+} from '../types';
 
 function Dashboard() {
   const navigate = useNavigate();
   const [pactStats, setPactStats] = useState<PactStats | null>(null);
+  const [pactStatsExtended, setPactStatsExtended] = useState<PactStatsExtended | null>(null);
   const [checkinStats, setCheckinStats] = useState<CheckinStats | null>(null);
+  const [trendStats, setTrendStats] = useState<TrendStats | null>(null);
+  const [trendPeriod, setTrendPeriod] = useState<PeriodUnit>('week');
+  const [trendCategory, setTrendCategory] = useState<string>('all');
+  const [trendCheckedBy, setTrendCheckedBy] = useState<string>('all');
   const [recentPacts, setRecentPacts] = useState<Pact[]>([]);
   const [upcomingResumes, setUpcomingResumes] = useState<Pact[]>([]);
   const [recentCheckins, setRecentCheckins] = useState<Checkin[]>([]);
@@ -24,11 +43,16 @@ function Dashboard() {
     loadDashboardData();
   }, []);
 
+  useEffect(() => {
+    loadTrendStats();
+  }, [trendPeriod, trendCategory, trendCheckedBy]);
+
   const loadDashboardData = async () => {
     try {
-      const [stats, checkinStatsData, pacts, resumes, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData] =
+      const [stats, statsExtended, checkinStatsData, pacts, resumes, checkins, timelineData, remindersData, countdownData, growthStatsData, growthRecordsData, badgesData] =
         await Promise.all([
           pactsApi.getStats(),
+          pactsApi.getStatsExtended(),
           checkinsApi.getStats(),
           pactsApi.findAll('active'),
           pactsApi.getUpcomingResumes(7),
@@ -41,6 +65,7 @@ function Dashboard() {
           growthApi.getBadges(),
         ]);
       setPactStats(stats);
+      setPactStatsExtended(statsExtended);
       setCheckinStats(checkinStatsData);
       setRecentPacts(pacts.slice(0, 3));
       setUpcomingResumes(resumes);
@@ -51,8 +76,21 @@ function Dashboard() {
       setGrowthStats(growthStatsData);
       setGrowthRecords(growthRecordsData);
       setAllBadges(badgesData);
+      loadTrendStats();
     } catch (error) {
       console.error('加载仪表盘数据失败', error);
+    }
+  };
+
+  const loadTrendStats = async () => {
+    try {
+      const category = trendCategory === 'all' ? undefined : trendCategory;
+      const checkedBy = trendCheckedBy === 'all' ? undefined : (trendCheckedBy as 'user' | 'partner' | 'both');
+      const periods = trendPeriod === 'day' ? 14 : trendPeriod === 'week' ? 8 : 6;
+      const data = await checkinsApi.getTrendStats(trendPeriod, periods, undefined, category, checkedBy);
+      setTrendStats(data);
+    } catch (error) {
+      console.error('加载趋势统计失败', error);
     }
   };
 
@@ -215,6 +253,244 @@ function Dashboard() {
             <div className="stat-label muted">已完成约定</div>
           </div>
         </div>
+      </div>
+
+      <div className="trend-section">
+        <div className="section-header">
+          <h2 className="section-title">
+            <span className="section-icon">📊</span>
+            完成趋势
+          </h2>
+          <span className="section-subtitle muted">按周期查看约定完成情况</span>
+        </div>
+
+        <div className="trend-filters card">
+          <div className="filter-group">
+            <label className="filter-label">周期</label>
+            <div className="filter-tabs">
+              {[
+                { value: 'day', label: '按天' },
+                { value: 'week', label: '按周' },
+                { value: 'month', label: '按月' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  className={`filter-tab ${trendPeriod === opt.value ? 'active' : ''}`}
+                  onClick={() => setTrendPeriod(opt.value as PeriodUnit)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-group">
+            <label className="filter-label">分类</label>
+            <div className="filter-tabs">
+              {[
+                { value: 'all', label: '全部' },
+                { value: 'daily', label: '每日' },
+                { value: 'weekly', label: '每周' },
+                { value: 'monthly', label: '每月' },
+                { value: 'special', label: '特别' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  className={`filter-tab ${trendCategory === opt.value ? 'active' : ''}`}
+                  onClick={() => setTrendCategory(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-group">
+            <label className="filter-label">双方</label>
+            <div className="filter-tabs">
+              {[
+                { value: 'all', label: '全部' },
+                { value: 'user', label: '我' },
+                { value: 'partner', label: 'TA' },
+                { value: 'both', label: '双方' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  className={`filter-tab ${trendCheckedBy === opt.value ? 'active' : ''}`}
+                  onClick={() => setTrendCheckedBy(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {trendStats && (
+          <>
+            <div className="trend-summary-grid">
+              <div className="trend-summary-card card">
+                <div className="trend-summary-icon" style={{ background: 'rgba(108, 92, 231, 0.15)' }}>
+                  📈
+                </div>
+                <div>
+                  <div className="trend-summary-value">
+                    {Math.round(trendStats.overallCompletionRate * 100)}%
+                  </div>
+                  <div className="trend-summary-label">总体完成率</div>
+                </div>
+              </div>
+              <div className="trend-summary-card card">
+                <div className="trend-summary-icon" style={{ background: 'rgba(0, 184, 148, 0.15)' }}>
+                  ✅
+                </div>
+                <div>
+                  <div className="trend-summary-value">{trendStats.totalCheckins}</div>
+                  <div className="trend-summary-label">期间打卡次数</div>
+                </div>
+              </div>
+              <div className="trend-summary-card card">
+                <div className="trend-summary-icon" style={{ background: 'rgba(253, 121, 168, 0.15)' }}>
+                  📝
+                </div>
+                <div>
+                  <div className="trend-summary-value">{trendStats.totalMakeup}</div>
+                  <div className="trend-summary-label">补卡次数</div>
+                </div>
+              </div>
+              <div className="trend-summary-card card">
+                <div className="trend-summary-icon" style={{ background: 'rgba(253, 203, 110, 0.15)' }}>
+                  ⚡
+                </div>
+                <div>
+                  <div className="trend-summary-value">{trendStats.averagePerPeriod}</div>
+                  <div className="trend-summary-label">周期平均打卡</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="trend-chart-card card">
+              <div className="trend-chart-header">
+                <h3>完成率趋势</h3>
+                <span className="trend-date-range muted">
+                  {trendStats.startDate} ~ {trendStats.endDate}
+                </span>
+              </div>
+              <div className="trend-chart">
+                {trendStats.trend.map((point, idx) => {
+                  const maxHeight = 100;
+                  const barHeight = Math.max(point.completionRate * maxHeight, 2);
+                  const hasData = point.total > 0;
+                  return (
+                    <div key={idx} className="trend-chart-column" title={`${point.period}: ${point.completed}/${point.total} (${Math.round(point.completionRate * 100)}%)`}>
+                      <div className="trend-chart-bar-wrapper">
+                        <div
+                          className="trend-chart-bar"
+                          style={{
+                            height: `${barHeight}px`,
+                            opacity: hasData ? 1 : 0.3,
+                          }}
+                        >
+                          {hasData && (
+                            <span className="trend-chart-bar-label">
+                              {Math.round(point.completionRate * 100)}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="trend-chart-both-bar-wrapper">
+                        <div
+                          className="trend-chart-both-bar"
+                          style={{
+                            height: `${point.total > 0 ? (point.bothCount / point.total) * 30 : 0}px`,
+                          }}
+                        />
+                      </div>
+                      <div className="trend-chart-x-label">{point.period}</div>
+                      <div className="trend-chart-x-sub muted">
+                        {point.completed}/{point.total}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="trend-chart-legend">
+                <div className="legend-item">
+                  <span className="legend-color" style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)' }} />
+                  <span>完成率</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-color" style={{ background: 'linear-gradient(135deg, #00b894, #55efc4)' }} />
+                  <span>双方确认</span>
+                </div>
+              </div>
+            </div>
+
+            {trendStats.categoryBreakdown.length > 0 && (
+              <div className="trend-breakdown-grid">
+                <div className="trend-breakdown-card card">
+                  <h3 className="breakdown-title">分类完成情况</h3>
+                  <div className="breakdown-list">
+                    {trendStats.categoryBreakdown.map(item => (
+                      <div key={item.category} className="breakdown-item">
+                        <div className="breakdown-item-header">
+                          <span className="breakdown-dot" style={{ background: item.color }} />
+                          <span className="breakdown-name">{item.categoryLabel}</span>
+                          <span className="breakdown-count muted">
+                            {item.completed}/{item.total}
+                          </span>
+                          <span className="breakdown-rate">
+                            {Math.round(item.completionRate * 100)}%
+                          </span>
+                        </div>
+                        <div className="breakdown-progress-track">
+                          <div
+                            className="breakdown-progress-fill"
+                            style={{
+                              width: `${item.completionRate * 100}%`,
+                              background: item.color,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {trendStats.checkedByBreakdown.length > 0 && (
+                  <div className="trend-breakdown-card card">
+                    <h3 className="breakdown-title">打卡方分布</h3>
+                    <div className="checkedby-list">
+                      {trendStats.checkedByBreakdown.map(item => (
+                        <div key={item.checkedBy} className="checkedby-item">
+                          <div className="checkedby-header">
+                            <span className="checkedby-icon">
+                              {item.checkedBy === 'user' ? '👤' : item.checkedBy === 'partner' ? '💑' : '🤝'}
+                            </span>
+                            <span className="checkedby-name">{item.label}</span>
+                            <span className="checkedby-count muted">{item.count}次</span>
+                            <span className="checkedby-rate">{Math.round(item.percentage * 100)}%</span>
+                          </div>
+                          <div className="checkedby-progress-track">
+                            <div
+                              className="checkedby-progress-fill"
+                              style={{
+                                width: `${item.percentage * 100}%`,
+                                background: item.checkedBy === 'user'
+                                  ? 'linear-gradient(90deg, #6c5ce7, #a29bfe)'
+                                  : item.checkedBy === 'partner'
+                                  ? 'linear-gradient(90deg, #fd79a8, #fab1a0)'
+                                  : 'linear-gradient(90deg, #00b894, #55efc4)',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {countdowns.length > 0 && (
@@ -1745,6 +2021,316 @@ function Dashboard() {
           border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
+        .trend-section {
+          margin-bottom: 32px;
+        }
+
+        .trend-filters {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 24px;
+          padding: 16px 20px;
+          margin-bottom: 20px;
+          align-items: center;
+        }
+
+        .filter-group {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .filter-label {
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--text-muted);
+          white-space: nowrap;
+        }
+
+        .filter-tabs {
+          display: flex;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.03);
+          padding: 4px;
+          border-radius: 10px;
+        }
+
+        .filter-tab {
+          padding: 6px 14px;
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
+          font-size: 13px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+
+        .filter-tab:hover {
+          color: var(--text-color);
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .filter-tab.active {
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(162, 155, 254, 0.15));
+          color: var(--primary-color);
+          box-shadow: 0 2px 8px rgba(108, 92, 231, 0.2);
+        }
+
+        .trend-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
+          margin-bottom: 20px;
+        }
+
+        .trend-summary-card {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 18px;
+        }
+
+        .trend-summary-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 22px;
+          flex-shrink: 0;
+        }
+
+        .trend-summary-value {
+          font-size: 24px;
+          font-weight: 700;
+          color: var(--text-color);
+          line-height: 1.2;
+        }
+
+        .trend-summary-label {
+          font-size: 12px;
+          color: var(--text-muted);
+          margin-top: 4px;
+        }
+
+        .trend-chart-card {
+          padding: 24px;
+          margin-bottom: 20px;
+        }
+
+        .trend-chart-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 28px;
+        }
+
+        .trend-chart-header h3 {
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .trend-date-range {
+          font-size: 12px;
+        }
+
+        .trend-chart {
+          display: flex;
+          align-items: flex-end;
+          gap: 12px;
+          height: 180px;
+          padding: 0 8px;
+          overflow-x: auto;
+        }
+
+        .trend-chart-column {
+          flex: 1;
+          min-width: 50px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .trend-chart-bar-wrapper {
+          width: 100%;
+          height: 120px;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+        }
+
+        .trend-chart-bar {
+          width: 70%;
+          max-width: 44px;
+          background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+          border-radius: 8px 8px 4px 4px;
+          position: relative;
+          transition: all 0.3s;
+          min-height: 4px;
+        }
+
+        .trend-chart-bar:hover {
+          filter: brightness(1.1);
+          transform: scaleY(1.02);
+          transform-origin: bottom;
+        }
+
+        .trend-chart-bar-label {
+          position: absolute;
+          top: -22px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--primary-color);
+          white-space: nowrap;
+        }
+
+        .trend-chart-both-bar-wrapper {
+          width: 100%;
+          height: 30px;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+        }
+
+        .trend-chart-both-bar {
+          width: 50%;
+          max-width: 30px;
+          background: linear-gradient(135deg, #00b894, #55efc4);
+          border-radius: 4px 4px 2px 2px;
+          min-height: 2px;
+        }
+
+        .trend-chart-x-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-color);
+        }
+
+        .trend-chart-x-sub {
+          font-size: 10px;
+        }
+
+        .trend-chart-legend {
+          display: flex;
+          gap: 20px;
+          margin-top: 20px;
+          padding-top: 16px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          justify-content: center;
+        }
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          color: var(--text-muted);
+        }
+
+        .legend-color {
+          width: 16px;
+          height: 16px;
+          border-radius: 4px;
+        }
+
+        .trend-breakdown-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 16px;
+        }
+
+        .trend-breakdown-card {
+          padding: 20px;
+        }
+
+        .breakdown-title {
+          font-size: 15px;
+          font-weight: 600;
+          margin: 0 0 18px;
+        }
+
+        .breakdown-list,
+        .checkedby-list {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .breakdown-item,
+        .checkedby-item {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .breakdown-item-header,
+        .checkedby-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .breakdown-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        .breakdown-name,
+        .checkedby-name {
+          flex: 1;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .breakdown-count,
+        .checkedby-count {
+          font-size: 12px;
+        }
+
+        .breakdown-rate,
+        .checkedby-rate {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--primary-color);
+        }
+
+        .checkedby-icon {
+          font-size: 16px;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 8px;
+          flex-shrink: 0;
+        }
+
+        .breakdown-progress-track,
+        .checkedby-progress-track {
+          height: 6px;
+          background: rgba(255, 255, 255, 0.06);
+          border-radius: 3px;
+          overflow: hidden;
+        }
+
+        .breakdown-progress-fill,
+        .checkedby-progress-fill {
+          height: 100%;
+          border-radius: 3px;
+          transition: width 0.4s ease;
+        }
+
         @media (max-width: 768px) {
           .badges-grid {
             grid-template-columns: repeat(2, 1fr);
@@ -1762,7 +2348,17 @@ function Dashboard() {
           .grid-4 {
             grid-template-columns: repeat(2, 1fr);
           }
-          
+          .trend-summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .trend-breakdown-grid {
+            grid-template-columns: 1fr;
+          }
+          .trend-filters {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+          }
           .page-title {
             font-size: 22px;
           }

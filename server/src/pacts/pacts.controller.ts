@@ -17,6 +17,11 @@ export class PactsController {
     return this.pactsService.getStats();
   }
 
+  @Get('stats-extended')
+  getStatsExtended() {
+    return this.pactsService.getStatsExtended();
+  }
+
   @Get('upcoming-resumes')
   getUpcomingResumes(@Query('days') days?: string) {
     const daysNum = days ? parseInt(days, 10) : 7;

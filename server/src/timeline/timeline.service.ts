@@ -15,11 +15,45 @@ export class TimelineService {
     private readonly pactsService: PactsService,
   ) {}
 
-  findAll(type?: string, limit?: number): TimelineEvent[] {
+  findAll(
+    type?: string,
+    limit?: number,
+    pactId?: string,
+    category?: string,
+    checkedBy?: string,
+    startDate?: string,
+    endDate?: string,
+  ): TimelineEvent[] {
     let result = [...this.events];
+
     if (type) {
       result = result.filter(e => e.type === type);
     }
+
+    if (pactId) {
+      result = result.filter(e => e.pactId === pactId);
+    }
+
+    if (category) {
+      const categoryPacts = this.pactsService.findAll(undefined, category);
+      const categoryPactIds = new Set(categoryPacts.map(p => p.id));
+      result = result.filter(e => !e.pactId || categoryPactIds.has(e.pactId));
+    }
+
+    if (checkedBy) {
+      result = result.filter(e => {
+        if (!e.metadata?.checkedBy) return false;
+        return e.metadata.checkedBy === checkedBy;
+      });
+    }
+
+    if (startDate) {
+      result = result.filter(e => e.date >= startDate);
+    }
+    if (endDate) {
+      result = result.filter(e => e.date <= endDate);
+    }
+
     result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     if (limit) {
       result = result.slice(0, limit);

@@ -279,4 +279,67 @@ export class PactsService {
     const totalCheckins = pacts.reduce((sum, p) => sum + p.totalCheckins, 0);
     return { total, active, pendingConfirmation, completed, paused, totalCheckins };
   }
+
+  getStatsExtended(): any {
+    const pacts = this.pacts || [];
+    const basicStats = this.getStats();
+
+    const categoryLabels: Record<string, string> = {
+      daily: '每日约定',
+      weekly: '每周约定',
+      monthly: '每月约定',
+      special: '特别约定',
+    };
+
+    const categoryColors: Record<string, string> = {
+      daily: '#6c5ce7',
+      weekly: '#00b894',
+      monthly: '#fd79a8',
+      special: '#fdcb6e',
+    };
+
+    const byCategory = (['daily', 'weekly', 'monthly', 'special'] as const).map(cat => {
+      const catPacts = pacts.filter(p => p.category === cat);
+      const total = catPacts.length;
+      const active = catPacts.filter(p => p.status === 'active').length;
+      const completed = catPacts.filter(p => p.status === 'completed').length;
+      const paused = catPacts.filter(p => p.status === 'paused').length;
+      const pendingConfirmation = catPacts.filter(p => p.status === 'pending_confirmation').length;
+      const totalCheckins = catPacts.reduce((sum, p) => sum + p.totalCheckins, 0);
+
+      let avgCompletionRate = 0;
+      if (active > 0) {
+        const activePactsWithCheckins = catPacts.filter(p => p.status === 'active' && p.totalCheckins > 0);
+        if (activePactsWithCheckins.length > 0) {
+          const rates = activePactsWithCheckins.map(p => {
+            const daysSinceStart = Math.max(1, Math.ceil((Date.now() - new Date(p.startDate).getTime()) / (1000 * 60 * 60 * 24)));
+            const expected = p.category === 'daily' ? daysSinceStart
+              : p.category === 'weekly' ? Math.ceil(daysSinceStart / 7)
+              : p.category === 'monthly' ? Math.max(1, Math.ceil(daysSinceStart / 30))
+              : Math.max(1, Math.ceil(daysSinceStart / 30));
+            return Math.min(100, Math.round((p.totalCheckins / expected) * 100));
+          });
+          avgCompletionRate = Math.round(rates.reduce((a, b) => a + b, 0) / rates.length);
+        }
+      }
+
+      return {
+        category: cat,
+        label: categoryLabels[cat],
+        total,
+        active,
+        completed,
+        paused,
+        pendingConfirmation,
+        totalCheckins,
+        avgCompletionRate,
+        color: categoryColors[cat],
+      };
+    });
+
+    return {
+      ...basicStats,
+      byCategory,
+    };
+  }
 }

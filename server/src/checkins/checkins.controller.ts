@@ -12,6 +12,8 @@ export class CheckinsController {
     @Query('pactId') pactId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('category') category?: string,
+    @Query('checkedBy') checkedBy?: string,
   ) {
     return this.checkinsService.findAll(pactId, startDate, endDate);
   }
@@ -19,6 +21,20 @@ export class CheckinsController {
   @Get('stats')
   getStats(@Query('pactId') pactId?: string) {
     return this.checkinsService.getCheckinStats(pactId);
+  }
+
+  @Get('trend')
+  getTrendStats(
+    @Query('period') period?: string,
+    @Query('periods') periods?: string,
+    @Query('pactId') pactId?: string,
+    @Query('category') category?: string,
+    @Query('checkedBy') checkedBy?: string,
+  ) {
+    const periodUnit = (period as 'day' | 'week' | 'month') || 'week';
+    const periodsNum = periods ? parseInt(periods, 10) : 8;
+    const checkedByFilter = checkedBy as 'user' | 'partner' | 'both' | undefined;
+    return this.checkinsService.getTrendStats(periodUnit, periodsNum, pactId, category, checkedByFilter);
   }
 
   @Get('missed')

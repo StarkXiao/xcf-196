@@ -6,8 +6,24 @@ export class TimelineController {
   constructor(private readonly timelineService: TimelineService) {}
 
   @Get()
-  findAll(@Query('type') type?: string, @Query('limit') limit?: string) {
-    return this.timelineService.findAll(type, limit ? parseInt(limit, 10) : undefined);
+  findAll(
+    @Query('type') type?: string,
+    @Query('limit') limit?: string,
+    @Query('pactId') pactId?: string,
+    @Query('category') category?: string,
+    @Query('checkedBy') checkedBy?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.timelineService.findAll(
+      type,
+      limit ? parseInt(limit, 10) : undefined,
+      pactId,
+      category,
+      checkedBy,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('upcoming-events')

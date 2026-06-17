@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { checkinsApi, pactsApi, subtasksApi } from '../services/api';
-import type { Checkin, Pact, CheckinStats, MissedCheckinPact, Subtask } from '../types';
+import type { Checkin, Pact, CheckinStats, MissedCheckinPact, Subtask, TrendStats, PeriodUnit } from '../types';
 
 const moodOptions = [
   { value: 'happy', label: '开心', emoji: '😊' },
@@ -39,6 +39,9 @@ function Checkins() {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [pacts, setPacts] = useState<Pact[]>([]);
   const [stats, setStats] = useState<CheckinStats | null>(null);
+  const [trendStats, setTrendStats] = useState<TrendStats | null>(null);
+  const [trendPeriod, setTrendPeriod] = useState<PeriodUnit>('week');
+  const [trendCheckedBy, setTrendCheckedBy] = useState<string>('all');
   const [missedCheckins, setMissedCheckins] = useState<MissedCheckinPact[]>([]);
   const [selectedPact, setSelectedPact] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
@@ -64,6 +67,10 @@ function Checkins() {
     loadData();
   }, [selectedPact]);
 
+  useEffect(() => {
+    loadTrendStats();
+  }, [selectedPact, trendPeriod, trendCheckedBy]);
+
   const loadData = async () => {
     try {
       const [pactsData, checkinsData, statsData, missedData] = await Promise.all([
@@ -80,8 +87,21 @@ function Checkins() {
         setFormData(prev => ({ ...prev, pactId: pactsData[0].id }));
         loadSubtasksForPact(pactsData[0].id);
       }
+      loadTrendStats();
     } catch (error) {
       console.error('加载打卡数据失败', error);
+    }
+  };
+
+  const loadTrendStats = async () => {
+    try {
+      const pactId = selectedPact === 'all' ? undefined : selectedPact;
+      const checkedBy = trendCheckedBy === 'all' ? undefined : (trendCheckedBy as 'user' | 'partner' | 'both');
+      const periods = trendPeriod === 'day' ? 14 : trendPeriod === 'week' ? 8 : 6;
+      const data = await checkinsApi.getTrendStats(trendPeriod, periods, pactId, undefined, checkedBy);
+      setTrendStats(data);
+    } catch (error) {
+      console.error('加载趋势统计失败', error);
     }
   };
 
@@ -263,6 +283,148 @@ function Checkins() {
           </div>
         </div>
       </div>
+
+      {trendStats && (
+        <div className="checkins-trend-section">
+          <div className="trend-filters card">
+            <div className="filter-group">
+              <label className="filter-label">周期</label>
+              <div className="filter-tabs">
+                {[
+                  { value: 'day', label: '按天' },
+                  { value: 'week', label: '按周' },
+                  { value: 'month', label: '按月' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    className={`filter-tab ${trendPeriod === opt.value ? 'active' : ''}`}
+                    onClick={() => setTrendPeriod(opt.value as PeriodUnit)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="filter-group">
+              <label className="filter-label">双方</label>
+              <div className="filter-tabs">
+                {[
+                  { value: 'all', label: '全部' },
+                  { value: 'user', label: '我' },
+                  { value: 'partner', label: 'TA' },
+                  { value: 'both', label: '双方' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    className={`filter-tab ${trendCheckedBy === opt.value ? 'active' : ''}`}
+                    onClick={() => setTrendCheckedBy(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="trend-summary-grid">
+            <div className="trend-summary-card card">
+              <div className="trend-summary-icon" style={{ background: 'rgba(108, 92, 231, 0.15)' }}>
+                📈
+              </div>
+              <div>
+                <div className="trend-summary-value">
+                  {Math.round(trendStats.overallCompletionRate * 100)}%
+                </div>
+                <div className="trend-summary-label">总体完成率</div>
+              </div>
+            </div>
+            <div className="trend-summary-card card">
+              <div className="trend-summary-icon" style={{ background: 'rgba(0, 184, 148, 0.15)' }}>
+                ✅
+              </div>
+              <div>
+                <div className="trend-summary-value">{trendStats.totalCheckins}</div>
+                <div className="trend-summary-label">期间打卡次数</div>
+              </div>
+            </div>
+            <div className="trend-summary-card card">
+              <div className="trend-summary-icon" style={{ background: 'rgba(253, 121, 168, 0.15)' }}>
+                📝
+              </div>
+              <div>
+                <div className="trend-summary-value">{trendStats.totalMakeup}</div>
+                <div className="trend-summary-label">补卡次数</div>
+              </div>
+            </div>
+            <div className="trend-summary-card card">
+              <div className="trend-summary-icon" style={{ background: 'rgba(253, 203, 110, 0.15)' }}>
+                ⚡
+              </div>
+              <div>
+                <div className="trend-summary-value">{trendStats.averagePerPeriod}</div>
+                <div className="trend-summary-label">周期平均打卡</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="trend-chart-card card">
+            <div className="trend-chart-header">
+              <h3>完成率趋势</h3>
+              <span className="trend-date-range muted">
+                {trendStats.startDate} ~ {trendStats.endDate}
+              </span>
+            </div>
+            <div className="trend-chart">
+              {trendStats.trend.map((point, idx) => {
+                const maxHeight = 100;
+                const barHeight = Math.max(point.completionRate * maxHeight, 2);
+                const hasData = point.total > 0;
+                return (
+                  <div key={idx} className="trend-chart-column" title={`${point.period}: ${point.completed}/${point.total} (${Math.round(point.completionRate * 100)}%)`}>
+                    <div className="trend-chart-bar-wrapper">
+                      <div
+                        className="trend-chart-bar"
+                        style={{
+                          height: `${barHeight}px`,
+                          opacity: hasData ? 1 : 0.3,
+                        }}
+                      >
+                        {hasData && (
+                          <span className="trend-chart-bar-label">
+                            {Math.round(point.completionRate * 100)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="trend-chart-both-bar-wrapper">
+                      <div
+                        className="trend-chart-both-bar"
+                        style={{
+                          height: `${point.total > 0 ? (point.bothCount / point.total) * 30 : 0}px`,
+                        }}
+                      />
+                    </div>
+                    <div className="trend-chart-x-label">{point.period}</div>
+                    <div className="trend-chart-x-sub muted">
+                      {point.completed}/{point.total}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="trend-chart-legend">
+              <div className="legend-item">
+                <span className="legend-color" style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)' }} />
+                <span>完成率</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-color" style={{ background: 'linear-gradient(135deg, #00b894, #55efc4)' }} />
+                <span>双方确认</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {totalMissedCount > 0 && (
         <div className="missed-checkins-section card">
@@ -1661,6 +1823,223 @@ function Checkins() {
           margin-bottom: 16px;
         }
 
+        .checkins-trend-section {
+          margin-bottom: 28px;
+        }
+
+        .trend-filters {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+          padding: 14px 18px;
+          margin-bottom: 18px;
+          align-items: center;
+        }
+
+        .filter-group {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .filter-label {
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--text-muted);
+          white-space: nowrap;
+        }
+
+        .filter-tabs {
+          display: flex;
+          gap: 4px;
+          background: rgba(255, 255, 255, 0.03);
+          padding: 4px;
+          border-radius: 10px;
+        }
+
+        .filter-tab {
+          padding: 5px 12px;
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
+          font-size: 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+
+        .filter-tab:hover {
+          color: var(--text-color);
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .filter-tab.active {
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(162, 155, 254, 0.15));
+          color: var(--primary-color);
+          box-shadow: 0 2px 8px rgba(108, 92, 231, 0.2);
+        }
+
+        .trend-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 14px;
+          margin-bottom: 18px;
+        }
+
+        .trend-summary-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+        }
+
+        .trend-summary-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .trend-summary-value {
+          font-size: 20px;
+          font-weight: 700;
+          color: var(--text-color);
+          line-height: 1.2;
+        }
+
+        .trend-summary-label {
+          font-size: 11px;
+          color: var(--text-muted);
+          margin-top: 3px;
+        }
+
+        .trend-chart-card {
+          padding: 20px;
+        }
+
+        .trend-chart-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+
+        .trend-chart-header h3 {
+          font-size: 15px;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .trend-date-range {
+          font-size: 11px;
+        }
+
+        .trend-chart {
+          display: flex;
+          align-items: flex-end;
+          gap: 10px;
+          height: 160px;
+          padding: 0 6px;
+          overflow-x: auto;
+        }
+
+        .trend-chart-column {
+          flex: 1;
+          min-width: 40px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .trend-chart-bar-wrapper {
+          width: 100%;
+          height: 100px;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+        }
+
+        .trend-chart-bar {
+          width: 70%;
+          max-width: 36px;
+          background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+          border-radius: 6px 6px 3px 3px;
+          position: relative;
+          transition: all 0.3s;
+          min-height: 3px;
+        }
+
+        .trend-chart-bar:hover {
+          filter: brightness(1.1);
+        }
+
+        .trend-chart-bar-label {
+          position: absolute;
+          top: -18px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 9px;
+          font-weight: 600;
+          color: var(--primary-color);
+          white-space: nowrap;
+        }
+
+        .trend-chart-both-bar-wrapper {
+          width: 100%;
+          height: 25px;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+        }
+
+        .trend-chart-both-bar {
+          width: 50%;
+          max-width: 24px;
+          background: linear-gradient(135deg, #00b894, #55efc4);
+          border-radius: 3px 3px 2px 2px;
+          min-height: 2px;
+        }
+
+        .trend-chart-x-label {
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--text-color);
+        }
+
+        .trend-chart-x-sub {
+          font-size: 9px;
+        }
+
+        .trend-chart-legend {
+          display: flex;
+          gap: 18px;
+          margin-top: 16px;
+          padding-top: 14px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          justify-content: center;
+        }
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          color: var(--text-muted);
+        }
+
+        .legend-color {
+          width: 14px;
+          height: 14px;
+          border-radius: 3px;
+        }
+
         @media (max-width: 768px) {
           .checkin-day {
             flex-direction: column;
@@ -1675,6 +2054,14 @@ function Checkins() {
 
           .grid-4 {
             grid-template-columns: repeat(2, 1fr);
+          }
+          .trend-summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .trend-filters {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 14px;
           }
         }
       `}</style>

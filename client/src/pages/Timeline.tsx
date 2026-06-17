@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { timelineApi, countdownApi, remindersApi, growthApi } from '../services/api';
-import type { TimelineEvent, CountdownItem, Reminder, GrowthStats, GrowthRecord } from '../types';
+import { timelineApi, countdownApi, remindersApi, growthApi, pactsApi } from '../services/api';
+import type { TimelineEvent, CountdownItem, Reminder, GrowthStats, GrowthRecord, Pact } from '../types';
 
 const typeLabels: Record<string, string> = {
   pact_created: '新约定',
@@ -46,7 +46,11 @@ const growthSourceIcons: Record<string, string> = {
 
 function Timeline() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [pacts, setPacts] = useState<Pact[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [checkedByFilter, setCheckedByFilter] = useState<string>('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<string>('all');
   const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
   const [anniversaryReminders, setAnniversaryReminders] = useState<Reminder[]>([]);
   const [detailEvent, setDetailEvent] = useState<TimelineEvent | null>(null);
@@ -57,20 +61,55 @@ function Timeline() {
 
   useEffect(() => {
     loadTimeline();
-  }, [typeFilter]);
+  }, [typeFilter, categoryFilter, checkedByFilter, dateRangeFilter]);
+
+  const getDateRangeFromFilter = (filter: string): { start?: string; end?: string } => {
+    const now = new Date();
+    const end = now.toISOString().split('T')[0];
+    let start: string | undefined;
+    switch (filter) {
+      case 'week':
+        const weekStart = new Date(now);
+        weekStart.setDate(weekStart.getDate() - 7);
+        start = weekStart.toISOString().split('T')[0];
+        break;
+      case 'month':
+        const monthStart = new Date(now);
+        monthStart.setMonth(monthStart.getMonth() - 1);
+        start = monthStart.toISOString().split('T')[0];
+        break;
+      case 'quarter':
+        const quarterStart = new Date(now);
+        quarterStart.setMonth(quarterStart.getMonth() - 3);
+        start = quarterStart.toISOString().split('T')[0];
+        break;
+      default:
+        start = undefined;
+    }
+    return { start, end: filter === 'all' ? undefined : end };
+  };
 
   const loadTimeline = async () => {
     try {
-      const [data, countdownData, allReminders, growthStatsData, growthRecordsData] = await Promise.all([
+      const { start, end } = getDateRangeFromFilter(dateRangeFilter);
+      const [data, pactsData, countdownData, allReminders, growthStatsData, growthRecordsData] = await Promise.all([
         timelineApi.findAll(
           typeFilter === 'all' || typeFilter === 'growth' ? undefined : typeFilter,
+          undefined,
+          undefined,
+          categoryFilter === 'all' ? undefined : categoryFilter,
+          checkedByFilter === 'all' ? undefined : checkedByFilter,
+          start,
+          end,
         ),
+        pactsApi.findAll(),
         countdownApi.findAll(),
         remindersApi.findAll(true),
         growthApi.getStats(),
         growthApi.getRecords(),
       ]);
       setEvents(data);
+      setPacts(pactsData);
       setCountdowns(countdownData);
       setAnniversaryReminders(allReminders.filter(r => r.type === 'anniversary'));
       setGrowthStats(growthStatsData);
@@ -240,6 +279,93 @@ function Timeline() {
         >
           🌱 成长记录
         </button>
+      </div>
+
+      <div className="advanced-filters card">
+        <div className="filter-row">
+          <div className="filter-item">
+            <span className="filter-icon">📂</span>
+            <span className="filter-name">分类</span>
+            <div className="filter-chip-group">
+              {[
+                { value: 'all', label: '全部' },
+                { value: 'daily', label: '每日' },
+                { value: 'weekly', label: '每周' },
+                { value: 'monthly', label: '每月' },
+                { value: 'special', label: '特别' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  className={`filter-chip ${categoryFilter === opt.value ? 'active' : ''}`}
+                  onClick={() => setCategoryFilter(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="filter-row">
+          <div className="filter-item">
+            <span className="filter-icon">👥</span>
+            <span className="filter-name">双方</span>
+            <div className="filter-chip-group">
+              {[
+                { value: 'all', label: '全部' },
+                { value: 'user', label: '我' },
+                { value: 'partner', label: 'TA' },
+                { value: 'both', label: '双方' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  className={`filter-chip ${checkedByFilter === opt.value ? 'active' : ''}`}
+                  onClick={() => setCheckedByFilter(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="filter-row">
+          <div className="filter-item">
+            <span className="filter-icon">📅</span>
+            <span className="filter-name">周期</span>
+            <div className="filter-chip-group">
+              {[
+                { value: 'all', label: '全部' },
+                { value: 'week', label: '近1周' },
+                { value: 'month', label: '近1月' },
+                { value: 'quarter', label: '近3月' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  className={`filter-chip ${dateRangeFilter === opt.value ? 'active' : ''}`}
+                  onClick={() => setDateRangeFilter(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        {(categoryFilter !== 'all' || checkedByFilter !== 'all' || dateRangeFilter !== 'all') && (
+          <div className="filter-reset-row">
+            <button
+              className="filter-reset-btn"
+              onClick={() => {
+                setCategoryFilter('all');
+                setCheckedByFilter('all');
+                setDateRangeFilter('all');
+              }}
+            >
+              ✕ 清除筛选
+            </button>
+            <span className="filter-result-count muted">
+              共 {events.length} 条记录
+            </span>
+          </div>
+        )}
       </div>
 
       {upcomingCountdowns.length > 0 && (
@@ -1412,6 +1538,108 @@ function Timeline() {
           font-weight: 500;
         }
 
+        .advanced-filters {
+          padding: 18px;
+          margin-bottom: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .filter-row {
+          display: flex;
+          align-items: flex-start;
+        }
+
+        .filter-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          width: 100%;
+        }
+
+        .filter-icon {
+          font-size: 16px;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 8px;
+          flex-shrink: 0;
+        }
+
+        .filter-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-color);
+          min-width: 42px;
+          flex-shrink: 0;
+        }
+
+        .filter-chip-group {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          flex: 1;
+        }
+
+        .filter-chip {
+          padding: 6px 14px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.02);
+          color: var(--text-muted);
+          font-size: 12px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+
+        .filter-chip:hover {
+          border-color: rgba(108, 92, 231, 0.3);
+          color: var(--text-color);
+          background: rgba(108, 92, 231, 0.05);
+        }
+
+        .filter-chip.active {
+          border-color: rgba(108, 92, 231, 0.5);
+          background: linear-gradient(135deg, rgba(108, 92, 231, 0.2), rgba(162, 155, 254, 0.1));
+          color: var(--primary-color);
+          box-shadow: 0 2px 10px rgba(108, 92, 231, 0.15);
+        }
+
+        .filter-reset-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-top: 12px;
+          margin-top: 4px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .filter-reset-btn {
+          padding: 6px 14px;
+          border: none;
+          background: rgba(253, 121, 168, 0.1);
+          color: #fd79a8;
+          font-size: 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+
+        .filter-reset-btn:hover {
+          background: rgba(253, 121, 168, 0.2);
+        }
+
+        .filter-result-count {
+          font-size: 12px;
+        }
+
         @media (max-width: 768px) {
           .growth-month-list {
             padding-left: 40px;
@@ -1452,6 +1680,15 @@ function Timeline() {
 
           .gallery-main-img {
             max-height: 240px;
+          }
+
+          .filter-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+          }
+          .filter-icon {
+            display: none;
           }
         }
       `}</style>

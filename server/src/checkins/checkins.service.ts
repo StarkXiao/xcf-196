@@ -529,4 +529,188 @@ export class CheckinsService {
         return totalDays;
     }
   }
+
+  getTrendStats(
+    period: 'day' | 'week' | 'month' = 'week',
+    periods: number = 8,
+    pactId?: string,
+    category?: string,
+    checkedBy?: 'user' | 'partner' | 'both',
+  ): any {
+    const allPacts = this.pactsService.findAll();
+    const pactsMap = new Map(allPacts.map(p => [p.id, p]));
+
+    let checkins = [...this.checkins];
+    if (pactId) {
+      checkins = checkins.filter(c => c.pactId === pactId);
+    }
+    if (category) {
+      checkins = checkins.filter(c => {
+        const pact = pactsMap.get(c.pactId);
+        return pact?.category === category;
+      });
+    }
+    if (checkedBy) {
+      checkins = checkins.filter(c => c.checkedBy === checkedBy);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const periodRanges: { start: Date; end: Date; label: string }[] = [];
+
+    for (let i = periods - 1; i >= 0; i--) {
+      const start = new Date(today);
+      const end = new Date(today);
+
+      if (period === 'day') {
+        start.setDate(start.getDate() - i);
+        end.setDate(end.getDate() - i);
+        const label = `${start.getMonth() + 1}/${start.getDate()}`;
+        periodRanges.push({ start, end, label });
+      } else if (period === 'week') {
+        const daysSinceMonday = (start.getDay() + 6) % 7;
+        start.setDate(start.getDate() - daysSinceMonday - i * 7);
+        end.setDate(start.getDate() + 6);
+        const label = `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}`;
+        periodRanges.push({ start, end, label });
+      } else {
+        start.setDate(1);
+        start.setMonth(start.getMonth() - i);
+        end.setDate(1);
+        end.setMonth(end.getMonth() - i + 1);
+        end.setDate(end.getDate() - 1);
+        const label = `${start.getFullYear()}/${start.getMonth() + 1}`;
+        periodRanges.push({ start, end, label });
+      }
+    }
+
+    const categoryLabels: Record<string, string> = {
+      daily: '每日约定',
+      weekly: '每周约定',
+      monthly: '每月约定',
+      special: '特别约定',
+    };
+
+    const categoryColors: Record<string, string> = {
+      daily: '#6c5ce7',
+      weekly: '#00b894',
+      monthly: '#fd79a8',
+      special: '#fdcb6e',
+    };
+
+    const checkedByLabels: Record<string, string> = {
+      user: '我打卡',
+      partner: 'TA打卡',
+      both: '一起打卡',
+    };
+
+    const trend = periodRanges.map(range => {
+      const periodCheckins = checkins.filter(c => {
+        const cDate = new Date(c.date);
+        cDate.setHours(0, 0, 0, 0);
+        return cDate >= range.start && cDate <= range.end;
+      });
+
+      const periodPactIds = [...new Set(periodCheckins.map(c => c.pactId))];
+      let expectedCount = 0;
+      periodPactIds.forEach(pid => {
+        const pact = pactsMap.get(pid);
+        if (pact) {
+          expectedCount += this.calculateExpectedInPeriod(pact, range.start, range.end, period);
+        }
+      });
+
+      const total = periodCheckins.length;
+      const makeupCount = periodCheckins.filter(c => c.isMakeup).length;
+      const userCount = periodCheckins.filter(c => c.checkedBy === 'user').length;
+      const partnerCount = periodCheckins.filter(c => c.checkedBy === 'partner').length;
+      const bothCount = periodCheckins.filter(c => c.checkedBy === 'both').length;
+
+      return {
+        period: range.label,
+        periodStart: range.start.toISOString().split('T')[0],
+        periodEnd: range.end.toISOString().split('T')[0],
+        total,
+        completed: total - makeupCount,
+        completionRate: expectedCount > 0 ? Math.min(100, Math.round((total / expectedCount) * 100)) : (total > 0 ? 100 : 0),
+        makeupCount,
+        userCount,
+        partnerCount,
+        bothCount,
+      };
+    });
+
+    const categoryBreakdown = (['daily', 'weekly', 'monthly', 'special'] as const).map(cat => {
+      const catPacts = allPacts.filter(p => p.category === cat);
+      const catCheckins = checkins.filter(c => {
+        const pact = pactsMap.get(c.pactId);
+        return pact?.category === cat;
+      });
+      const expectedDays = catPacts.reduce((sum, p) => sum + this.calculateExpectedDays(p), 0);
+      return {
+        category: cat,
+        categoryLabel: categoryLabels[cat],
+        total: catCheckins.length,
+        completed: catCheckins.filter(c => !c.isMakeup).length,
+        completionRate: expectedDays > 0 ? Math.min(100, Math.round((catCheckins.length / expectedDays) * 100)) : 0,
+        activePacts: catPacts.filter(p => p.status === 'active').length,
+        color: categoryColors[cat],
+      };
+    });
+
+    const totalCheckins = checkins.length;
+    const userTotal = checkins.filter(c => c.checkedBy === 'user').length;
+    const partnerTotal = checkins.filter(c => c.checkedBy === 'partner').length;
+    const bothTotal = checkins.filter(c => c.checkedBy === 'both').length;
+
+    const checkedByBreakdown = (['user', 'partner', 'both'] as const).map(cb => ({
+      checkedBy: cb,
+      label: checkedByLabels[cb],
+      count: cb === 'user' ? userTotal : cb === 'partner' ? partnerTotal : bothTotal,
+      percentage: totalCheckins > 0 ? Math.round(((cb === 'user' ? userTotal : cb === 'partner' ? partnerTotal : bothTotal) / totalCheckins) * 100) : 0,
+    }));
+
+    const startDate = periodRanges[0]?.start.toISOString().split('T')[0] || today.toISOString().split('T')[0];
+    const endDate = periodRanges[periodRanges.length - 1]?.end.toISOString().split('T')[0] || today.toISOString().split('T')[0];
+
+    return {
+      period,
+      periods,
+      startDate,
+      endDate,
+      trend,
+      categoryBreakdown,
+      checkedByBreakdown,
+      overallCompletionRate: trend.length > 0
+        ? Math.round(trend.reduce((sum, t) => sum + t.completionRate, 0) / trend.length)
+        : 0,
+      totalCheckins,
+      totalMakeup: checkins.filter(c => c.isMakeup).length,
+      averagePerPeriod: trend.length > 0 ? Math.round((totalCheckins / trend.length) * 10) / 10 : 0,
+    };
+  }
+
+  private calculateExpectedInPeriod(pact: any, periodStart: Date, periodEnd: Date, period: string): number {
+    const pactStart = new Date(pact.startDate);
+    const pactEnd = pact.endDate ? new Date(pact.endDate) : new Date();
+    const actualStart = pactStart > periodStart ? pactStart : periodStart;
+    const actualEnd = pactEnd < periodEnd ? pactEnd : periodEnd;
+    if (actualStart > actualEnd) return 0;
+
+    const daysInPeriod = Math.floor((actualEnd.getTime() - actualStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    switch (pact.category) {
+      case 'daily':
+        return daysInPeriod;
+      case 'weekly':
+        return Math.ceil(daysInPeriod / 7);
+      case 'monthly':
+        return 1;
+      case 'special':
+        return Math.max(1, Math.ceil(daysInPeriod / 30));
+      default:
+        return daysInPeriod;
+    }
+  }
 }
