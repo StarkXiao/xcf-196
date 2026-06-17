@@ -168,8 +168,10 @@ export class RemindersService {
       repeat: data.repeat || 'none',
       isActive: data.isActive !== undefined ? data.isActive : true,
       pactId: data.pactId,
+      wishId: data.wishId,
       priority: data.priority,
-    };
+      metadata: data.metadata,
+    } as any;
     this.reminders.push(newReminder);
     return newReminder;
   }

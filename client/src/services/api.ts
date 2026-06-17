@@ -332,4 +332,12 @@ export const giftPlansApi = {
   getStats: () => api.get<GiftStats>('/gift-plans/stats').then(res => res.data),
   getUpcoming: (days?: number) =>
     api.get<GiftPlan[]>('/gift-plans/upcoming', { params: { days } }).then(res => res.data),
+  findByAnniversary: (anniversaryId: string) =>
+    api.get<GiftPlan[]>(`/gift-plans/by-anniversary/${anniversaryId}`).then(res => res.data),
+  findByDateRange: (targetDate: string, toleranceDays?: number) =>
+    api.get<GiftPlan[]>(`/gift-plans/by-date/${targetDate}`, { params: { toleranceDays } }).then(res => res.data),
+  linkToAnniversary: (id: string, anniversaryId: string) =>
+    api.post<GiftPlan>(`/gift-plans/${id}/link-anniversary/${anniversaryId}`).then(res => res.data),
+  unlinkFromAnniversary: (id: string) =>
+    api.post<GiftPlan>(`/gift-plans/${id}/unlink-anniversary`).then(res => res.data),
 };

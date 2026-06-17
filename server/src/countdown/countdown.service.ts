@@ -2,6 +2,7 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PactsService } from '../pacts/pacts.service';
 import { UsersService } from '../users/users.service';
 import { RemindersService } from '../reminders/reminders.service';
+import { GiftPlansService } from '../gift-plans/gift-plans.service';
 import { CountdownItem, AtmosphereStatus } from './entities/countdown.entity';
 
 @Injectable()
@@ -13,6 +14,8 @@ export class CountdownService {
     private readonly usersService: UsersService,
     @Inject(forwardRef(() => RemindersService))
     private readonly remindersService: RemindersService,
+    @Inject(forwardRef(() => GiftPlansService))
+    private readonly giftPlansService: GiftPlansService,
   ) {}
 
   private isSameDay(a: Date, b: Date): boolean {
@@ -137,6 +140,32 @@ export class CountdownService {
         atmosphere: (isToday || days <= 7) ? 'romantic' : 'none',
         description: reminder.description,
       });
+    });
+
+    items.forEach(item => {
+      try {
+        const directLinked = this.giftPlansService.findByAnniversary(item.id);
+        const dateNearby = this.giftPlansService.findByDateRange(item.targetDate, 7);
+        const seen = new Set<string>();
+        const allGifts = [...directLinked, ...dateNearby].filter(g => {
+          if (seen.has(g.id)) return false;
+          seen.add(g.id);
+          return true;
+        });
+        if (allGifts.length > 0) {
+          item.linkedGiftPlans = allGifts.map(g => ({
+            id: g.id,
+            title: g.title,
+            status: g.status,
+            icon: g.icon,
+            color: g.color,
+            budget: g.budget,
+            actualSpent: g.actualSpent,
+          }));
+        }
+      } catch (e) {
+        // ignore
+      }
     });
 
     items.sort((a, b) => a.daysLeft - b.daysLeft);

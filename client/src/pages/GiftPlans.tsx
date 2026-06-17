@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { giftPlansApi } from '../services/api';
-import type { GiftPlan, GiftItem, GiftStats } from '../types';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { giftPlansApi, countdownApi } from '../services/api';
+import type { GiftPlan, GiftItem, GiftStats, CountdownItem } from '../types';
 
 const categoryLabels: Record<string, string> = {
   anniversary: '周年纪念',
@@ -82,8 +83,11 @@ const iconOptions = ['🎁', '💕', '💝', '🎂', '🎄', '🎓', '🏠', '�
 const colorOptions = ['#e91e63', '#ff9800', '#f06292', '#4caf50', '#9c27b0', '#795548', '#2196f3', '#607d8b', '#6c5ce7', '#fd79a8', '#00cec9', '#fdcb6e'];
 
 function GiftPlans() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [gifts, setGifts] = useState<GiftPlan[]>([]);
   const [stats, setStats] = useState<GiftStats | null>(null);
+  const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showCreate, setShowCreate] = useState(false);
@@ -126,6 +130,7 @@ function GiftPlans() {
     deliveryReminderDate: '',
     color: '#e91e63',
     icon: '🎁',
+    linkedAnniversaryId: '' as string | undefined,
   });
 
   const [activeTab, setActiveTab] = useState<'list' | 'stats'>('list');
@@ -133,6 +138,52 @@ function GiftPlans() {
   useEffect(() => {
     loadData();
   }, [statusFilter, categoryFilter]);
+
+  useEffect(() => {
+    countdownApi.findAll().then(setCountdowns).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.prefillAnniversary) {
+      const cd: CountdownItem = state.prefillAnniversary;
+      setNewGift(prev => ({
+        ...prev,
+        linkedAnniversaryId: cd.id,
+        occasion: cd.title,
+        occasionDate: cd.targetDate,
+        category: cd.type === 'anniversary' ? 'anniversary' : prev.category,
+        title: `${cd.title}礼物`,
+        color: cd.color,
+        icon: cd.icon,
+      }));
+      setShowCreate(true);
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    const handler = async (e: CustomEvent) => {
+      const giftId = e.detail?.giftId;
+      if (!giftId) return;
+      try {
+        await loadData();
+        setTimeout(() => {
+          setGifts(currentGifts => {
+            const found = currentGifts.find(g => g.id === giftId);
+            if (found) setShowDetail(found);
+            return currentGifts;
+          });
+        }, 50);
+        if (!gifts.length) {
+          const g = await giftPlansApi.findOne(giftId);
+          setShowDetail(g);
+        }
+      } catch (e) { console.error(e); }
+    };
+    window.addEventListener('open-gift-detail', handler as any);
+    return () => window.removeEventListener('open-gift-detail', handler as any);
+  }, [gifts.length]);
 
   const loadData = async () => {
     try {
@@ -157,6 +208,7 @@ function GiftPlans() {
         ...newGift,
         deliveryReminderDate: newGift.deliveryReminderDate || newGift.deliveryDate,
         giftItems: [],
+        linkedAnniversaryId: newGift.linkedAnniversaryId || undefined,
       });
       setShowCreate(false);
       resetNewGiftForm();
@@ -188,6 +240,7 @@ function GiftPlans() {
       deliveryReminderDate: '',
       color: '#e91e63',
       icon: '🎁',
+      linkedAnniversaryId: undefined,
     });
   };
 
@@ -575,6 +628,18 @@ function GiftPlans() {
                         {gift.giftItems.filter(i => i.isPurchased).length}/{gift.giftItems.length} 已购买
                       </span>
                     </div>
+                    {(() => {
+                      const linkedCd = countdowns.find(c => c.id === gift.linkedAnniversaryId);
+                      if (!linkedCd) return null;
+                      return (
+                        <div className="gift-detail-row">
+                          <span className="gift-detail-label">🔗 关联</span>
+                          <span className="gift-detail-value linked-badge" style={{ color: linkedCd.color }}>
+                            {linkedCd.icon} {linkedCd.title}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="gift-budget-section">
@@ -666,6 +731,38 @@ function GiftPlans() {
                   ))}
                 </div>
               </div>
+
+              {countdowns.length > 0 && (
+                <div className="occasion-suggestions">
+                  <label className="form-label">🎯 从纪念日/倒计时选择（自动关联日期）：</label>
+                  <div className="occasion-tags">
+                    {countdowns.map(cd => (
+                      <button
+                        key={cd.id}
+                        className={`occasion-tag ${newGift.linkedAnniversaryId === cd.id ? 'active' : ''}`}
+                        style={{
+                          borderColor: newGift.linkedAnniversaryId === cd.id ? cd.color : 'transparent',
+                          background: newGift.linkedAnniversaryId === cd.id ? `${cd.color}15` : 'rgba(255,255,255,0.05)',
+                        }}
+                        onClick={() => {
+                          setNewGift(prev => ({
+                            ...prev,
+                            linkedAnniversaryId: prev.linkedAnniversaryId === cd.id ? undefined : cd.id,
+                            occasion: prev.linkedAnniversaryId === cd.id ? prev.occasion : cd.title,
+                            occasionDate: prev.linkedAnniversaryId === cd.id ? prev.occasionDate : cd.targetDate,
+                            category: cd.type === 'anniversary' ? 'anniversary' : prev.category,
+                            title: prev.linkedAnniversaryId === cd.id ? prev.title : `${cd.title}礼物`,
+                            color: prev.linkedAnniversaryId === cd.id ? prev.color : cd.color,
+                            icon: prev.linkedAnniversaryId === cd.id ? prev.icon : cd.icon,
+                          }));
+                        }}
+                      >
+                        {cd.icon} {cd.title}（还有{cd.daysLeft}天）
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="form-grid">
                 <div className="form-group">
@@ -1082,6 +1179,92 @@ function GiftPlans() {
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="sidebar-card">
+                    <h4 className="sidebar-card-title">🔗 关联纪念日</h4>
+                    {(() => {
+                      const linkedCountdown = countdowns.find(c => c.id === showDetail.linkedAnniversaryId);
+                      const nearbyCountdowns = countdowns.filter(c => {
+                        const occasion = new Date(showDetail.occasionDate);
+                        const target = new Date(c.targetDate);
+                        const diff = Math.abs(occasion.getTime() - target.getTime()) / (1000 * 60 * 60 * 24);
+                        return diff <= 7 && c.id !== showDetail.linkedAnniversaryId;
+                      }).slice(0, 3);
+                      return (
+                        <>
+                          {linkedCountdown ? (
+                            <div 
+                              className="linked-anniversary-card"
+                              style={{ borderColor: linkedCountdown.color, background: `${linkedCountdown.color}10` }}
+                            >
+                              <div className="linked-anniversary-header">
+                                <span className="linked-anniversary-icon" style={{ color: linkedCountdown.color }}>
+                                  {linkedCountdown.icon}
+                                </span>
+                                <div className="linked-anniversary-info">
+                                  <div className="linked-anniversary-title">{linkedCountdown.title}</div>
+                                  <div className="linked-anniversary-date">
+                                    {linkedCountdown.targetDate} · 还有{linkedCountdown.daysLeft}天
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="linked-anniversary-actions">
+                                <button 
+                                  className="btn btn-xs btn-secondary"
+                                  onClick={() => navigate('/timeline', { state: { highlightCountdown: linkedCountdown.id } })}
+                                >
+                                  📅 查看纪念日
+                                </button>
+                                {showDetail.status !== 'completed' && showDetail.status !== 'cancelled' && (
+                                  <button 
+                                    className="btn btn-xs btn-danger"
+                                    onClick={async () => {
+                                      try {
+                                        await giftPlansApi.unlinkFromAnniversary(showDetail.id);
+                                        setShowDetail(null);
+                                        loadData();
+                                      } catch (e) { console.error(e); }
+                                    }}
+                                  >
+                                    取消关联
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="empty-linked">
+                              <p>未关联纪念日</p>
+                              {nearbyCountdowns.length > 0 && (
+                                <>
+                                  <p className="nearby-hint">发现附近的纪念日，可快速关联：</p>
+                                  <div className="nearby-list">
+                                    {nearbyCountdowns.map(cd => (
+                                      <button
+                                        key={cd.id}
+                                        className="btn btn-xs btn-secondary"
+                                        style={{ borderColor: cd.color }}
+                                        onClick={async () => {
+                                          try {
+                                            await giftPlansApi.linkToAnniversary(showDetail.id, cd.id);
+                                            loadData();
+                                            const updated = await giftPlansApi.findOne(showDetail.id);
+                                            setShowDetail(updated);
+                                          } catch (e) { console.error(e); }
+                                        }}
+                                        disabled={showDetail.status === 'completed' || showDetail.status === 'cancelled'}
+                                      >
+                                        {cd.icon} 关联 {cd.title}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className="sidebar-card">
@@ -2106,6 +2289,83 @@ function GiftPlans() {
 
         .btn-block {
           width: 100%;
+        }
+
+        .btn-xs {
+          padding: 4px 10px;
+          font-size: 12px;
+          border-radius: 6px;
+        }
+
+        .btn-sm {
+          padding: 6px 14px;
+          font-size: 13px;
+        }
+
+        .linked-anniversary-card {
+          border: 1px solid transparent;
+          border-radius: 10px;
+          padding: 12px;
+        }
+
+        .linked-anniversary-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+
+        .linked-anniversary-icon {
+          font-size: 24px;
+          flex-shrink: 0;
+        }
+
+        .linked-anniversary-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .linked-anniversary-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-color);
+        }
+
+        .linked-anniversary-date {
+          font-size: 12px;
+          color: var(--text-muted);
+          margin-top: 2px;
+        }
+
+        .linked-anniversary-actions {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .empty-linked {
+          font-size: 13px;
+          color: var(--text-muted);
+        }
+
+        .empty-linked p {
+          margin: 0 0 8px 0;
+        }
+
+        .nearby-hint {
+          font-size: 12px;
+        }
+
+        .nearby-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-top: 6px;
+        }
+
+        .linked-badge {
+          font-weight: 500;
+          font-size: 12px;
         }
 
         .occasion-suggestions {

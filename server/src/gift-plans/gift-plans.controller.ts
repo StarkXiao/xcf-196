@@ -81,4 +81,31 @@ export class GiftPlansController {
   remove(@Param('id') id: string) {
     return this.giftPlansService.remove(id);
   }
+
+  @Get('by-anniversary/:anniversaryId')
+  findByAnniversary(@Param('anniversaryId') anniversaryId: string) {
+    return this.giftPlansService.findByAnniversary(anniversaryId);
+  }
+
+  @Get('by-date/:targetDate')
+  findByDateRange(
+    @Param('targetDate') targetDate: string,
+    @Query('toleranceDays') toleranceDays?: string,
+  ) {
+    const days = toleranceDays ? parseInt(toleranceDays, 10) : 3;
+    return this.giftPlansService.findByDateRange(targetDate, days);
+  }
+
+  @Post(':id/link-anniversary/:anniversaryId')
+  linkToAnniversary(
+    @Param('id') id: string,
+    @Param('anniversaryId') anniversaryId: string,
+  ) {
+    return this.giftPlansService.linkToAnniversary(id, anniversaryId);
+  }
+
+  @Post(':id/unlink-anniversary')
+  unlinkFromAnniversary(@Param('id') id: string) {
+    return this.giftPlansService.unlinkFromAnniversary(id);
+  }
 }

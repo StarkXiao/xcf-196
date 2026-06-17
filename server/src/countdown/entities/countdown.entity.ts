@@ -13,6 +13,15 @@ export interface CountdownItem {
   pactId?: string;
   atmosphere: 'romantic' | 'festive' | 'none';
   description?: string;
+  linkedGiftPlans?: Array<{
+    id: string;
+    title: string;
+    status: string;
+    icon: string;
+    color: string;
+    budget: number;
+    actualSpent: number;
+  }>;
 }
 
 export interface AtmosphereStatus {

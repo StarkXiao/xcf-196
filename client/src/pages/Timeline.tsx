@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { timelineApi, countdownApi, remindersApi, growthApi, pactsApi, wishlistApi } from '../services/api';
-import type { TimelineEvent, CountdownItem, Reminder, GrowthStats, GrowthRecord, Pact, WishItem } from '../types';
+import { useNavigate } from 'react-router-dom';
+import { timelineApi, countdownApi, remindersApi, growthApi, pactsApi, wishlistApi, giftPlansApi } from '../services/api';
+import type { TimelineEvent, CountdownItem, Reminder, GrowthStats, GrowthRecord, Pact, WishItem, GiftPlan } from '../types';
 
 const typeLabels: Record<string, string> = {
   pact_created: '新约定',
@@ -53,6 +54,7 @@ const growthSourceIcons: Record<string, string> = {
 };
 
 function Timeline() {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [pacts, setPacts] = useState<Pact[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -67,6 +69,17 @@ function Timeline() {
   const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
   const [showGrowthView, setShowGrowthView] = useState(false);
   const [upcomingWishes, setUpcomingWishes] = useState<WishItem[]>([]);
+  const [jumpToGift, setJumpToGift] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (jumpToGift) {
+      navigate('/gift-plans');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('open-gift-detail', { detail: { giftId: jumpToGift } }));
+      }, 100);
+      setJumpToGift(null);
+    }
+  }, [jumpToGift, navigate]);
 
   useEffect(() => {
     loadTimeline();
@@ -436,6 +449,47 @@ function Timeline() {
                       ))}
                     </div>
                   )}
+                  {cd.linkedGiftPlans && cd.linkedGiftPlans.length > 0 && (
+                    <div className="upcoming-reminders">
+                      <div className="upcoming-reminders-title">
+                        🎁 关联的礼物计划
+                        <button 
+                          className="add-gift-btn"
+                          onClick={() => navigate('/gift-plans', { state: { prefillAnniversary: cd } })}
+                        >
+                          + 新建
+                        </button>
+                      </div>
+                      {cd.linkedGiftPlans.map(gift => (
+                        <div 
+                          key={gift.id} 
+                          className="upcoming-reminder-item linked-gift-item"
+                          style={{ borderLeft: `3px solid ${gift.color}` }}
+                          onClick={() => setJumpToGift(gift.id)}
+                        >
+                          <span className="upcoming-reminder-time">{gift.icon}</span>
+                          <span className="upcoming-reminder-name">{gift.title}</span>
+                          <span className="gift-status-badge" style={{ color: gift.color }}>
+                            ¥{gift.actualSpent}/{gift.budget}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(!cd.linkedGiftPlans || cd.linkedGiftPlans.length === 0) && (
+                    <div className="upcoming-reminders">
+                      <div className="upcoming-reminders-title">
+                        🎁 礼物计划
+                        <button 
+                          className="add-gift-btn"
+                          onClick={() => navigate('/gift-plans', { state: { prefillAnniversary: cd } })}
+                        >
+                          + 新建礼物计划
+                        </button>
+                      </div>
+                      <p className="no-gift-hint">还没有为「{cd.title}」准备礼物，点击上方按钮开始计划吧~</p>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -672,6 +726,18 @@ function Timeline() {
                         <span className="muted">{event.date}</span>
                         {isCheckinEvent(event) && (
                           <span className="timeline-view-detail">查看详情 →</span>
+                        )}
+                        {event.type?.startsWith('gift_') && event.metadata?.giftId && (
+                          <span 
+                            className="timeline-view-detail" 
+                            onClick={e => {
+                              e.stopPropagation();
+                              setJumpToGift(event.metadata!.giftId);
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            🎁 查看礼物 →
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1903,6 +1969,54 @@ function Timeline() {
 
         .filter-banner-reset:hover {
           background: rgba(253, 121, 168, 0.18);
+        }
+
+        .add-gift-btn {
+          margin-left: auto;
+          padding: 4px 10px;
+          background: rgba(233, 30, 99, 0.15);
+          border: 1px solid rgba(233, 30, 99, 0.3);
+          color: #e91e63;
+          font-size: 12px;
+          border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+
+        .add-gift-btn:hover {
+          background: rgba(233, 30, 99, 0.25);
+        }
+
+        .linked-gift-item {
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .linked-gift-item:hover {
+          background: rgba(255, 255, 255, 0.05);
+          transform: translateX(2px);
+        }
+
+        .gift-status-badge {
+          font-size: 12px;
+          font-weight: 500;
+          margin-left: auto;
+        }
+
+        .no-gift-hint {
+          font-size: 12px;
+          color: var(--text-muted);
+          margin: 6px 0 0 0;
+          padding: 8px 10px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 6px;
+          border-left: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .upcoming-reminders-title {
+          display: flex;
+          align-items: center;
         }
 
         .mt-20 {

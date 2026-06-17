@@ -80,16 +80,23 @@ export class GiftPlansService {
   }
 
   private ensureGiftReminder(gift: GiftPlan): void {
-    if (!gift.reminderEnabled) return;
     try {
+      const allReminders = this.remindersService.findAll();
+      const giftOccasionReminders = allReminders.filter(
+        r => (r as any).metadata?.giftId === gift.id && !(r as any).metadata?.delivery,
+      );
+
+      if (!gift.reminderEnabled) {
+        giftOccasionReminders.forEach(r => this.remindersService.update(r.id, { isActive: false }));
+        return;
+      }
+
       const reminderDate = this.getReminderDate(gift.occasionDate, gift.reminderDaysBefore);
       const today = new Date().toISOString().split('T')[0];
-      if (reminderDate < today) return;
-
-      const existingReminders = this.remindersService.findAll(true);
-      const existing = existingReminders.find(
-        r => r.type === 'gift' && r.metadata?.giftId === gift.id,
-      );
+      if (reminderDate < today) {
+        giftOccasionReminders.forEach(r => this.remindersService.update(r.id, { isActive: false }));
+        return;
+      }
 
       const reminderTitle = gift.isAnonymous
         ? `🎁 匿名礼物提醒：${gift.occasion}`
@@ -99,24 +106,26 @@ export class GiftPlansService {
         ? `距离${gift.occasion}还有${gift.reminderDaysBefore}天，记得准备好匿名礼物哦~`
         : `距离${gift.occasion}还有${gift.reminderDaysBefore}天，别忘了准备送给${this.recipientLabels[gift.recipient]}的礼物「${gift.title}」`;
 
+      const existing = giftOccasionReminders[0];
       if (existing) {
         this.remindersService.update(existing.id, {
           title: reminderTitle,
           description: reminderDesc,
           date: reminderDate,
+          isActive: true,
         });
       } else {
         this.remindersService.create({
           title: reminderTitle,
           description: reminderDesc,
-          type: 'gift',
+          type: 'custom' as any,
           date: reminderDate,
           time: '09:00',
           repeat: 'none',
           isActive: true,
           priority: gift.category === 'anniversary' || gift.category === 'valentine' ? 'high' : 'medium',
-          metadata: { giftId: gift.id },
-        });
+          metadata: { giftId: gift.id, occasion: true },
+        } as any);
       }
     } catch (e) {
       // ignore
@@ -124,37 +133,47 @@ export class GiftPlansService {
   }
 
   private ensureDeliveryReminder(gift: GiftPlan): void {
-    if (!gift.deliveryReminderEnabled || !gift.deliveryReminderDate) return;
     try {
-      const today = new Date().toISOString().split('T')[0];
-      if (gift.deliveryReminderDate < today) return;
-
-      const existingReminders = this.remindersService.findAll(true);
-      const existing = existingReminders.find(
-        r => r.type === 'gift_delivery' && r.metadata?.giftId === gift.id,
+      const allReminders = this.remindersService.findAll();
+      const deliveryReminders = allReminders.filter(
+        r => (r as any).metadata?.giftId === gift.id && (r as any).metadata?.delivery,
       );
+
+      if (!gift.deliveryReminderEnabled || !gift.deliveryReminderDate) {
+        deliveryReminders.forEach(r => this.remindersService.update(r.id, { isActive: false }));
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      if (gift.deliveryReminderDate < today) {
+        deliveryReminders.forEach(r => this.remindersService.update(r.id, { isActive: false }));
+        return;
+      }
 
       const reminderTitle = `🚚 礼物送达提醒：${gift.occasion}`;
       const reminderDesc = `今天是「${gift.title}」的送达日期，记得${gift.deliveryMethod === 'in_person' ? '当面送给' : '寄给'}${this.recipientLabels[gift.recipient]}哦~`;
 
+      const existing = deliveryReminders[0];
       if (existing) {
         this.remindersService.update(existing.id, {
           title: reminderTitle,
           description: reminderDesc,
           date: gift.deliveryReminderDate,
+          time: gift.deliveryTime || '10:00',
+          isActive: true,
         });
       } else {
         this.remindersService.create({
           title: reminderTitle,
           description: reminderDesc,
-          type: 'gift',
+          type: 'custom' as any,
           date: gift.deliveryReminderDate,
           time: gift.deliveryTime || '10:00',
           repeat: 'none',
           isActive: true,
           priority: 'high',
           metadata: { giftId: gift.id, delivery: true },
-        });
+        } as any);
       }
     } catch (e) {
       // ignore
@@ -163,8 +182,8 @@ export class GiftPlansService {
 
   private deactivateGiftReminders(giftId: string): void {
     try {
-      const reminders = this.remindersService.findAll(true);
-      const giftReminders = reminders.filter(r => r.metadata?.giftId === giftId);
+      const reminders = this.remindersService.findAll();
+      const giftReminders = reminders.filter(r => (r as any).metadata?.giftId === giftId);
       giftReminders.forEach(r => {
         this.remindersService.update(r.id, { isActive: false });
       });
@@ -554,11 +573,13 @@ export class GiftPlansService {
         return giftDate >= startDate && giftDate <= nowDate;
       });
       const spent = periodGifts.reduce((sum, g) => sum + g.actualSpent, 0);
+      const budgetMap = { monthly: 1000, quarterly: 3000, yearly: 10000 };
+      const totalBudget = budgetMap[period];
       return {
         period,
-        totalBudget: period * 'monthly' === 'monthly' ? 1000 : period === 'quarterly' ? 3000 : 10000,
+        totalBudget,
         spent,
-        remaining: (period === 'monthly' ? 1000 : period === 'quarterly' ? 3000 : 10000) - spent,
+        remaining: totalBudget - spent,
         giftCount: periodGifts.length,
       };
     };
@@ -600,5 +621,46 @@ export class GiftPlansService {
         return occasionDate >= now && occasionDate <= endDate;
       })
       .sort((a, b) => new Date(a.occasionDate).getTime() - new Date(b.occasionDate).getTime());
+  }
+
+  findByAnniversary(anniversaryId: string): GiftPlan[] {
+    return this.giftPlans
+      .filter(g => g.linkedAnniversaryId === anniversaryId)
+      .sort((a, b) => new Date(b.occasionDate).getTime() - new Date(a.occasionDate).getTime());
+  }
+
+  findByDateRange(targetDate: string, toleranceDays: number = 3): GiftPlan[] {
+    const target = new Date(targetDate);
+    const start = new Date(target);
+    start.setDate(start.getDate() - toleranceDays);
+    const end = new Date(target);
+    end.setDate(end.getDate() + toleranceDays);
+
+    return this.giftPlans.filter(g => {
+      const occasionDate = new Date(g.occasionDate);
+      return occasionDate >= start && occasionDate <= end;
+    });
+  }
+
+  linkToAnniversary(id: string, anniversaryId: string): GiftPlan {
+    const gift = this.findOne(id);
+    const index = this.giftPlans.findIndex(g => g.id === id);
+    this.giftPlans[index] = {
+      ...gift,
+      linkedAnniversaryId: anniversaryId,
+      updatedAt: new Date().toISOString(),
+    };
+    return this.giftPlans[index];
+  }
+
+  unlinkFromAnniversary(id: string): GiftPlan {
+    const gift = this.findOne(id);
+    const index = this.giftPlans.findIndex(g => g.id === id);
+    this.giftPlans[index] = {
+      ...gift,
+      linkedAnniversaryId: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    return this.giftPlans[index];
   }
 }
