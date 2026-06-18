@@ -208,6 +208,37 @@ export class FamilyTasksService {
     };
   }
 
+  private calculatePointsForPeriod(person: 'user' | 'partner', periodStart: Date, periodEnd: Date): FamilyTaskPoints {
+    const userInfo = person === 'user' ? mockUser : mockPartner;
+    const personTasks = this.tasks.filter(t => {
+      if (t.status !== 'completed' && t.status !== 'verified') return false;
+      if (t.assignedTo === 'both') return true;
+      return t.assignedTo === person || t.completedBy === person;
+    });
+
+    const completedInPeriod = personTasks.filter(t => {
+      const taskDate = new Date(t.completedAt || t.createdAt);
+      return taskDate >= periodStart && taskDate <= periodEnd;
+    });
+
+    const periodPoints = completedInPeriod.reduce((sum, t) => sum + t.points, 0);
+    const completedCount = completedInPeriod.length;
+    const verifiedCount = completedInPeriod.filter(t => t.status === 'verified').length;
+
+    return {
+      userId: person,
+      userName: userInfo.name,
+      avatar: userInfo.avatar,
+      totalPoints: periodPoints,
+      completedTasks: completedCount,
+      verifiedTasks: verifiedCount,
+      weeklyPoints: periodPoints,
+      monthlyPoints: periodPoints,
+      currentStreak: 0,
+      longestStreak: 0,
+    };
+  }
+
   findAll(status?: string, category?: string, assignedTo?: string): FamilyTask[] {
     let result = [...this.tasks];
     if (status && status !== 'all') {
@@ -571,27 +602,37 @@ export class FamilyTasksService {
       periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     }
 
-    const periodTasks = this.tasks.filter(t => {
+    const periodCreatedTasks = this.tasks.filter(t => {
       const taskDate = new Date(t.createdAt);
       return taskDate >= periodStart && taskDate <= periodEnd;
     });
 
-    const totalTasks = periodTasks.length;
-    const completedTasks = periodTasks.filter(t => t.status === 'completed' || t.status === 'verified').length;
-    const verifiedTasks = periodTasks.filter(t => t.status === 'verified').length;
-    const pendingTasks = periodTasks.filter(t => t.status === 'pending' || t.status === 'in_progress').length;
-    const overdueTasks = periodTasks.filter(t => this.isOverdue(t)).length;
+    const periodCompletedTasks = this.tasks.filter(t => {
+      if (t.status !== 'completed' && t.status !== 'verified') return false;
+      const taskDate = new Date(t.completedAt || t.createdAt);
+      return taskDate >= periodStart && taskDate <= periodEnd;
+    });
+
+    const totalTasks = periodCreatedTasks.length;
+    const completedTasks = periodCompletedTasks.length;
+    const verifiedTasks = periodCompletedTasks.filter(t => t.status === 'verified').length;
+    const pendingTasks = this.tasks.filter(t => {
+      const taskDate = new Date(t.createdAt);
+      return taskDate <= periodEnd && (t.status === 'pending' || t.status === 'in_progress');
+    }).length;
+    const overdueTasks = this.tasks.filter(t => {
+      const taskDate = new Date(t.createdAt);
+      return taskDate <= periodEnd && this.isOverdue(t);
+    }).length;
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    const totalPoints = periodTasks
-      .filter(t => t.status === 'verified' || t.status === 'completed')
-      .reduce((sum, t) => sum + t.points, 0);
+    const totalPoints = periodCompletedTasks.reduce((sum, t) => sum + t.points, 0);
 
     const assignees: ('user' | 'partner' | 'both')[] = ['user', 'partner', 'both'];
     const byAssignee = assignees.map(a => {
-      const assigneeTasks = periodTasks.filter(t => t.assignedTo === a);
-      const aCompleted = assigneeTasks.filter(t => t.status === 'completed' || t.status === 'verified').length;
-      const aPoints = assigneeTasks
-        .filter(t => t.status === 'verified' || t.status === 'completed')
+      const assigneeTasks = periodCreatedTasks.filter(t => t.assignedTo === a);
+      const aCompleted = periodCompletedTasks.filter(t => t.assignedTo === a).length;
+      const aPoints = periodCompletedTasks
+        .filter(t => t.assignedTo === a)
         .reduce((sum, t) => sum + t.points, 0);
       return {
         assignee: a,
@@ -608,10 +649,10 @@ export class FamilyTasksService {
       'finance', 'childcare', 'errands', 'planning', 'other'
     ];
     const byCategory = categories.map(cat => {
-      const catTasks = periodTasks.filter(t => t.category === cat);
-      const cCompleted = catTasks.filter(t => t.status === 'completed' || t.status === 'verified').length;
-      const cPoints = catTasks
-        .filter(t => t.status === 'verified' || t.status === 'completed')
+      const catTasks = periodCreatedTasks.filter(t => t.category === cat);
+      const cCompleted = periodCompletedTasks.filter(t => t.category === cat).length;
+      const cPoints = periodCompletedTasks
+        .filter(t => t.category === cat)
         .reduce((sum, t) => sum + t.points, 0);
       return {
         category: cat,
@@ -622,8 +663,7 @@ export class FamilyTasksService {
       };
     }).filter(c => c.total > 0);
 
-    const topTasks = [...periodTasks]
-      .filter(t => t.status === 'completed' || t.status === 'verified')
+    const topTasks = [...periodCompletedTasks]
       .sort((a, b) => b.points - a.points)
       .slice(0, 5);
 
@@ -638,15 +678,15 @@ export class FamilyTasksService {
       suggestions.push(`本${period === 'week' ? '周' : '月'}任务完成率较低（${completionRate}%），建议合理安排任务量`);
     }
 
-    const userPoints = this.calculatePoints('user');
-    const partnerPoints = this.calculatePoints('partner');
+    const userPoints = this.calculatePointsForPeriod('user', periodStart, periodEnd);
+    const partnerPoints = this.calculatePointsForPeriod('partner', periodStart, periodEnd);
 
     if (userPoints.totalPoints > partnerPoints.totalPoints) {
-      highlights.push(`🏆 ${mockUser.name} 本${period === 'week' ? '周' : '月'}积分领先！获得 ${userPoints.weeklyPoints > 0 ? (period === 'week' ? userPoints.weeklyPoints : userPoints.monthlyPoints) : userPoints.totalPoints} 积分`);
+      highlights.push(`🏆 ${mockUser.name} 本${period === 'week' ? '周' : '月'}积分领先！获得 ${userPoints.totalPoints} 积分，完成了 ${userPoints.completedTasks} 个任务`);
     } else if (partnerPoints.totalPoints > userPoints.totalPoints) {
-      highlights.push(`🏆 ${mockPartner.name} 本${period === 'week' ? '周' : '月'}积分领先！获得 ${partnerPoints.weeklyPoints > 0 ? (period === 'week' ? partnerPoints.weeklyPoints : partnerPoints.monthlyPoints) : partnerPoints.totalPoints} 积分`);
-    } else {
-      highlights.push(`🤝 两人积分持平，配合默契！`);
+      highlights.push(`🏆 ${mockPartner.name} 本${period === 'week' ? '周' : '月'}积分领先！获得 ${partnerPoints.totalPoints} 积分，完成了 ${partnerPoints.completedTasks} 个任务`);
+    } else if (userPoints.totalPoints > 0) {
+      highlights.push(`🤝 两人积分持平，配合默契！各获得 ${userPoints.totalPoints} 积分`);
     }
 
     if (overdueTasks > 0) {

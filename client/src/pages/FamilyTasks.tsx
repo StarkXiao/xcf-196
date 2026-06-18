@@ -98,7 +98,10 @@ function FamilyTasks() {
   const [showCreate, setShowCreate] = useState(false);
   const [showDetail, setShowDetail] = useState<FamilyTask | null>(null);
   const [showComplete, setShowComplete] = useState<FamilyTask | null>(null);
+  const [showVerify, setShowVerify] = useState<FamilyTask | null>(null);
   const [completionNote, setCompletionNote] = useState('');
+  const [completionPerson, setCompletionPerson] = useState<'user' | 'partner'>('user');
+  const [verifyPerson, setVerifyPerson] = useState<'user' | 'partner'>('partner');
   const [successMsg, setSuccessMsg] = useState('');
 
   const [newTask, setNewTask] = useState({
@@ -192,7 +195,7 @@ function FamilyTasks() {
   const handleComplete = async (task: FamilyTask) => {
     try {
       await familyTasksApi.complete(task.id, {
-        completedBy: 'user',
+        completedBy: completionPerson,
         completionNote: completionNote || undefined,
       });
       setShowComplete(null);
@@ -206,7 +209,8 @@ function FamilyTasks() {
 
   const handleVerify = async (task: FamilyTask) => {
     try {
-      await familyTasksApi.verify(task.id, 'partner');
+      await familyTasksApi.verify(task.id, verifyPerson);
+      setShowVerify(null);
       showSuccess('任务已确认！');
       loadData();
     } catch (error) {
@@ -487,7 +491,7 @@ function FamilyTasks() {
                 {task.status === 'completed' && (
                   <button
                     className="btn btn-sm btn-accent"
-                    onClick={e => { e.stopPropagation(); handleVerify(task); }}
+                    onClick={e => { e.stopPropagation(); setVerifyPerson('partner'); setShowVerify(task); }}
                   >
                     确认完成
                   </button>
@@ -778,13 +782,13 @@ function FamilyTasks() {
               {(showDetail.status === 'pending' || showDetail.status === 'in_progress') && (
                 <button
                   className="btn btn-success"
-                  onClick={() => { setShowDetail(null); setShowComplete(showDetail); }}
+                  onClick={() => { setShowDetail(null); setCompletionPerson('user'); setShowComplete(showDetail); }}
                 >
                   标记完成
                 </button>
               )}
               {showDetail.status === 'completed' && (
-                <button className="btn btn-accent" onClick={() => { setShowDetail(null); handleVerify(showDetail); }}>
+                <button className="btn btn-accent" onClick={() => { setShowDetail(null); setVerifyPerson('partner'); setShowVerify(showDetail); }}>
                   确认完成
                 </button>
               )}
@@ -803,6 +807,25 @@ function FamilyTasks() {
             <div className="modal-body">
               <p>完成后将获得 <strong>⭐ {showComplete.points} 积分</strong></p>
               <div className="form-group">
+                <label>谁完成的？</label>
+                <div className="btn-row">
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${completionPerson === 'user' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setCompletionPerson('user')}
+                  >
+                    {user?.avatar} {user?.name || '我'}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${completionPerson === 'partner' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setCompletionPerson('partner')}
+                  >
+                    {user?.partnerAvatar} {user?.partnerName || 'TA'}
+                  </button>
+                </div>
+              </div>
+              <div className="form-group">
                 <label>完成备注（可选）</label>
                 <textarea
                   placeholder="分享一下完成任务的心得或照片说明..."
@@ -816,6 +839,67 @@ function FamilyTasks() {
               <button className="btn btn-secondary" onClick={() => setShowComplete(null)}>取消</button>
               <button className="btn btn-success" onClick={() => handleComplete(showComplete)}>
                 确认完成 🎉
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showVerify && (
+        <div className="modal-overlay" onClick={() => setShowVerify(null)}>
+          <div className="modal card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>👍 确认任务完成：{showVerify.title}</h3>
+              <button className="close-btn" onClick={() => setShowVerify(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p>确认任务已完成，积分将正式计入 <strong>{showVerify.completedBy === 'user' ? user?.name : user?.partnerName}</strong> 的账户</p>
+              <div className="form-group">
+                <label>谁确认？</label>
+                <div className="btn-row">
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${verifyPerson === 'user' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setVerifyPerson('user')}
+                  >
+                    {user?.avatar} {user?.name || '我'}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${verifyPerson === 'partner' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setVerifyPerson('partner')}
+                  >
+                    {user?.partnerAvatar} {user?.partnerName || 'TA'}
+                  </button>
+                </div>
+              </div>
+              {showVerify.completionNote && (
+                <div className="detail-section">
+                  <div className="detail-label">完成备注：</div>
+                  <p className="detail-text">{showVerify.completionNote}</p>
+                </div>
+              )}
+              {showVerify.completedBy && (
+                <div className="detail-row">
+                  <span className="detail-label">完成人：</span>
+                  <span>
+                    {showVerify.completedBy === 'user' ? user?.avatar : user?.partnerAvatar}
+                    {' '}
+                    {showVerify.completedBy === 'user' ? user?.name : user?.partnerName}
+                  </span>
+                </div>
+              )}
+              {showVerify.completedAt && (
+                <div className="detail-row">
+                  <span className="detail-label">完成时间：</span>
+                  <span>{new Date(showVerify.completedAt).toLocaleString('zh-CN')}</span>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowVerify(null)}>取消</button>
+              <button className="btn btn-accent" onClick={() => handleVerify(showVerify)}>
+                确认验收 👍
               </button>
             </div>
           </div>
