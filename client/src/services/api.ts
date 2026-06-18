@@ -73,6 +73,14 @@ import type {
   FamilyTaskStats,
   FamilyTaskReview,
   FamilyTaskCategory,
+  CallAppointment,
+  MeetingCountdown,
+  MissingRecord,
+  MissingReply,
+  GiftReminder,
+  MeetingReview,
+  LongDistanceStats,
+  UpcomingLongDistance,
 } from '../types';
 
 const api = axios.create({
@@ -544,4 +552,64 @@ export const familyTasksApi = {
   getUpcomingReminders: (days?: number) =>
     api.get<FamilyTask[]>('/family-tasks/upcoming-reminders', { params: { days } }).then(res => res.data),
   getCategories: () => api.get<FamilyTaskCategory[]>('/family-tasks/categories').then(res => res.data),
+};
+
+export const longDistanceApi = {
+  getStats: () => api.get<LongDistanceStats>('/long-distance/stats').then(res => res.data),
+  getUpcoming: (days?: number) =>
+    api.get<UpcomingLongDistance>('/long-distance/upcoming', { params: { days } }).then(res => res.data),
+
+  findAllCallAppointments: (status?: string) =>
+    api.get<CallAppointment[]>('/long-distance/call-appointments', { params: { status } }).then(res => res.data),
+  findOneCallAppointment: (id: string) =>
+    api.get<CallAppointment>(`/long-distance/call-appointments/${id}`).then(res => res.data),
+  createCallAppointment: (data: Partial<CallAppointment> & { title: string; date: string; time: string; createdBy: 'user' | 'partner' }) =>
+    api.post<CallAppointment>('/long-distance/call-appointments', data).then(res => res.data),
+  updateCallAppointment: (id: string, data: Partial<CallAppointment>) =>
+    api.patch<CallAppointment>(`/long-distance/call-appointments/${id}`, data).then(res => res.data),
+  removeCallAppointment: (id: string) => api.delete(`/long-distance/call-appointments/${id}`),
+
+  findAllMeetingCountdowns: (status?: string) =>
+    api.get<MeetingCountdown[]>('/long-distance/meeting-countdowns', { params: { status } }).then(res => res.data),
+  findOneMeetingCountdown: (id: string) =>
+    api.get<MeetingCountdown>(`/long-distance/meeting-countdowns/${id}`).then(res => res.data),
+  createMeetingCountdown: (data: Partial<MeetingCountdown> & { title: string; meetingDate: string; createdBy: 'user' | 'partner' }) =>
+    api.post<MeetingCountdown>('/long-distance/meeting-countdowns', data).then(res => res.data),
+  updateMeetingCountdown: (id: string, data: Partial<MeetingCountdown>) =>
+    api.patch<MeetingCountdown>(`/long-distance/meeting-countdowns/${id}`, data).then(res => res.data),
+  removeMeetingCountdown: (id: string) => api.delete(`/long-distance/meeting-countdowns/${id}`),
+
+  findAllMissingRecords: (category?: string, createdBy?: string) =>
+    api.get<MissingRecord[]>('/long-distance/missing-records', { params: { category, createdBy } }).then(res => res.data),
+  findOneMissingRecord: (id: string) =>
+    api.get<MissingRecord>(`/long-distance/missing-records/${id}`).then(res => res.data),
+  createMissingRecord: (data: Partial<MissingRecord> & { title: string; content: string; createdBy: 'user' | 'partner' }) =>
+    api.post<MissingRecord>('/long-distance/missing-records', data).then(res => res.data),
+  updateMissingRecord: (id: string, data: Partial<MissingRecord>) =>
+    api.patch<MissingRecord>(`/long-distance/missing-records/${id}`, data).then(res => res.data),
+  removeMissingRecord: (id: string) => api.delete(`/long-distance/missing-records/${id}`),
+  likeMissingRecord: (id: string, likedBy: 'user' | 'partner') =>
+    api.post<MissingRecord>(`/long-distance/missing-records/${id}/like`, { likedBy }).then(res => res.data),
+  addMissingReply: (id: string, data: { author: 'user' | 'partner'; content: string }) =>
+    api.post<MissingRecord>(`/long-distance/missing-records/${id}/reply`, data).then(res => res.data),
+
+  findAllGiftReminders: (status?: string, giftType?: string) =>
+    api.get<GiftReminder[]>('/long-distance/gift-reminders', { params: { status, giftType } }).then(res => res.data),
+  findOneGiftReminder: (id: string) =>
+    api.get<GiftReminder>(`/long-distance/gift-reminders/${id}`).then(res => res.data),
+  createGiftReminder: (data: Partial<GiftReminder> & { title: string; recipient: 'user' | 'partner'; sender: 'user' | 'partner'; plannedDate: string }) =>
+    api.post<GiftReminder>('/long-distance/gift-reminders', data).then(res => res.data),
+  updateGiftReminder: (id: string, data: Partial<GiftReminder>) =>
+    api.patch<GiftReminder>(`/long-distance/gift-reminders/${id}`, data).then(res => res.data),
+  removeGiftReminder: (id: string) => api.delete(`/long-distance/gift-reminders/${id}`),
+
+  findAllMeetingReviews: () =>
+    api.get<MeetingReview[]>('/long-distance/meeting-reviews').then(res => res.data),
+  findOneMeetingReview: (id: string) =>
+    api.get<MeetingReview>(`/long-distance/meeting-reviews/${id}`).then(res => res.data),
+  createMeetingReview: (data: Partial<MeetingReview> & { title: string; meetingDate: string; summary: string; createdBy: 'user' | 'partner' }) =>
+    api.post<MeetingReview>('/long-distance/meeting-reviews', data).then(res => res.data),
+  updateMeetingReview: (id: string, data: Partial<MeetingReview>) =>
+    api.patch<MeetingReview>(`/long-distance/meeting-reviews/${id}`, data).then(res => res.data),
+  removeMeetingReview: (id: string) => api.delete(`/long-distance/meeting-reviews/${id}`),
 };

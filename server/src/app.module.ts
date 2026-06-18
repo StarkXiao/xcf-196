@@ -16,6 +16,7 @@ import { LedgerModule } from './ledger/ledger.module';
 import { ReadingPlansModule } from './reading-plans/reading-plans.module';
 import { DatePlansModule } from './date-plans/date-plans.module';
 import { FamilyTasksModule } from './family-tasks/family-tasks.module';
+import { LongDistanceModule } from './long-distance/long-distance.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { FamilyTasksModule } from './family-tasks/family-tasks.module';
     ReadingPlansModule,
     DatePlansModule,
     FamilyTasksModule,
+    LongDistanceModule,
   ],
 })
 export class AppModule {}

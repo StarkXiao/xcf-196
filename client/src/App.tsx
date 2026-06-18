@@ -17,6 +17,7 @@ import ReadingPlans from './pages/ReadingPlans';
 import DatePlans from './pages/DatePlans';
 import FamilyTasks from './pages/FamilyTasks';
 import FamilyTasksReview from './pages/FamilyTasksReview';
+import LongDistance from './pages/LongDistance';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
         <Route path="reading-plans" element={<ReadingPlans />} />
         <Route path="family-tasks" element={<FamilyTasks />} />
         <Route path="family-tasks/review" element={<FamilyTasksReview />} />
+        <Route path="long-distance" element={<LongDistance />} />
         <Route path="timeline" element={<Timeline />} />
         <Route path="reminders" element={<Reminders />} />
         <Route path="monthly-review" element={<MonthlyReview />} />
