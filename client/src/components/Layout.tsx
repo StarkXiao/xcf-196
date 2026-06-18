@@ -14,6 +14,7 @@ const navItems = [
   { path: '/building-map', label: '建筑地图', icon: '🗺️' },
   { path: '/travel-plans', label: '旅行计划', icon: '✈️' },
   { path: '/gift-plans', label: '礼物计划', icon: '🎁' },
+  { path: '/date-plans', label: '约会策划', icon: '💝' },
   { path: '/timeline', label: '时间线', icon: '🕐' },
   { path: '/reminders', label: '提醒', icon: '🔔' },
   { path: '/monthly-review', label: '月度回顾', icon: '📊' },

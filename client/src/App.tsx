@@ -14,6 +14,7 @@ import GiftPlans from './pages/GiftPlans';
 import MoodCompanion from './pages/MoodCompanion';
 import Ledger from './pages/Ledger';
 import ReadingPlans from './pages/ReadingPlans';
+import DatePlans from './pages/DatePlans';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="building-map" element={<BuildingMap />} />
         <Route path="travel-plans" element={<TravelPlans />} />
         <Route path="gift-plans" element={<GiftPlans />} />
+        <Route path="date-plans" element={<DatePlans />} />
         <Route path="ledger" element={<Ledger />} />
         <Route path="reading-plans" element={<ReadingPlans />} />
         <Route path="timeline" element={<Timeline />} />

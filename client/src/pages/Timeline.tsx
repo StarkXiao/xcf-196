@@ -23,6 +23,12 @@ const typeLabels: Record<string, string> = {
   reading_milestone: '阅读里程碑',
   reading_checkin: '阅读打卡',
   reading_thought: '阅读感想',
+  date_plan_created: '约会计划',
+  date_plan_voting: '约会投票',
+  date_plan_confirmed: '约会确认',
+  date_plan_booked: '约会预约',
+  date_plan_checkin: '约会打卡',
+  date_plan_completed: '约会完成',
 };
 
 const moodMap: Record<string, { emoji: string; label: string; color: string }> = {
@@ -335,6 +341,7 @@ function Timeline() {
             { value: 'makeup_checkin', label: '补签' },
             { value: 'wish_created', label: '愿望' },
             { value: 'gift_created', label: '礼物' },
+            { value: 'date_plan_created', label: '💝 约会' },
           ].map(tab => (
             <button
               key={tab.value}
@@ -806,6 +813,18 @@ function Timeline() {
                             🎁 查看礼物 →
                           </span>
                         )}
+                        {event.type?.startsWith('date_plan_') && event.metadata?.datePlanId && (
+                          <span
+                            className="timeline-view-detail"
+                            onClick={e => {
+                              e.stopPropagation();
+                              navigate('/date-plans');
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            💝 查看约会 →
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1116,6 +1135,36 @@ function Timeline() {
         }
 
         .timeline-type.type-reading_thought {
+          background: rgba(233, 30, 99, 0.2);
+          color: #e91e63;
+        }
+
+        .timeline-type.type-date_plan_created {
+          background: rgba(233, 30, 99, 0.2);
+          color: #e91e63;
+        }
+
+        .timeline-type.type-date_plan_voting {
+          background: rgba(253, 203, 110, 0.2);
+          color: #fdcb6e;
+        }
+
+        .timeline-type.type-date_plan_confirmed {
+          background: rgba(0, 184, 148, 0.2);
+          color: #00b894;
+        }
+
+        .timeline-type.type-date_plan_booked {
+          background: rgba(9, 132, 227, 0.2);
+          color: #0984e3;
+        }
+
+        .timeline-type.type-date_plan_checkin {
+          background: rgba(225, 112, 85, 0.2);
+          color: #e17055;
+        }
+
+        .timeline-type.type-date_plan_completed {
           background: rgba(233, 30, 99, 0.2);
           color: #e91e63;
         }

@@ -64,6 +64,11 @@ import type {
   ReadingPlanStats,
   PlanFullDetails,
   TravelPlanFullDetails,
+  DatePlan,
+  DateInspiration,
+  DateCheckin,
+  DateReview,
+  DatePlanStats,
 } from '../types';
 
 const api = axios.create({
@@ -471,4 +476,41 @@ export const readingPlansApi = {
     api.get<ReadingMilestone[]>(`/reading-plans/${planId}/milestones`, { params: { achieved: achieved?.toString() } }).then(res => res.data),
   achieveMilestone: (id: string, achievedBy: 'user' | 'partner' | 'both') =>
     api.post<ReadingMilestone>(`/reading-plans/milestones/${id}/achieve`, { achievedBy }).then(res => res.data),
+};
+
+export const datePlansApi = {
+  findAll: (status?: string, category?: string) =>
+    api.get<DatePlan[]>('/date-plans', { params: { status, category } }).then(res => res.data),
+  findOne: (id: string) => api.get<DatePlan>(`/date-plans/${id}`).then(res => res.data),
+  create: (data: Partial<DatePlan> & { title: string; category: DatePlan['category']; createdBy: 'user' | 'partner' }) =>
+    api.post<DatePlan>('/date-plans', data).then(res => res.data),
+  update: (id: string, data: Partial<DatePlan>) =>
+    api.patch<DatePlan>(`/date-plans/${id}`, data).then(res => res.data),
+  remove: (id: string) => api.delete(`/date-plans/${id}`),
+  getStats: () => api.get<DatePlanStats>('/date-plans/stats').then(res => res.data),
+  getUpcoming: (days?: number) =>
+    api.get<DatePlan[]>('/date-plans/upcoming', { params: { days } }).then(res => res.data),
+
+  addInspiration: (id: string, data: { title: string; description?: string; category?: string; location?: string; estimatedCost?: number; referenceUrl?: string; photos?: string[]; suggestedBy: 'user' | 'partner' }) =>
+    api.post<DateInspiration>(`/date-plans/${id}/inspirations`, data).then(res => res.data),
+  removeInspiration: (id: string, inspirationId: string) =>
+    api.delete(`/date-plans/${id}/inspirations/${inspirationId}`),
+
+  startVoting: (id: string) =>
+    api.post<DatePlan>(`/date-plans/${id}/start-voting`).then(res => res.data),
+  vote: (id: string, data: { inspirationId: string; votedBy: 'user' | 'partner' }) =>
+    api.post<DatePlan>(`/date-plans/${id}/vote`, data).then(res => res.data),
+  removeVote: (id: string, inspirationId: string, votedBy: string) =>
+    api.delete(`/date-plans/${id}/vote/${inspirationId}/${votedBy}`).then(res => res.data),
+
+  confirmPlan: (id: string, data: { selectedInspirationId: string; date: string; time?: string; location?: string; address?: string }) =>
+    api.post<DatePlan>(`/date-plans/${id}/confirm`, data).then(res => res.data),
+  markBooked: (id: string) =>
+    api.post<DatePlan>(`/date-plans/${id}/book`).then(res => res.data),
+  checkin: (id: string, data: { title: string; location: string; address?: string; date: string; time: string; photos?: string[]; mood?: DateCheckin['mood']; note?: string; checkedBy: 'user' | 'partner' | 'both' }) =>
+    api.post<DateCheckin>(`/date-plans/${id}/checkin`, data).then(res => res.data),
+  addReview: (id: string, data: { rating: number; content: string; mood?: DateReview['mood']; photos?: string[]; tags?: string[]; reviewedBy: 'user' | 'partner' }) =>
+    api.post<DateReview>(`/date-plans/${id}/review`, data).then(res => res.data),
+  cancel: (id: string) =>
+    api.post<DatePlan>(`/date-plans/${id}/cancel`).then(res => res.data),
 };
