@@ -15,6 +15,7 @@ import { MoodsModule } from './moods/moods.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { ReadingPlansModule } from './reading-plans/reading-plans.module';
 import { DatePlansModule } from './date-plans/date-plans.module';
+import { FamilyTasksModule } from './family-tasks/family-tasks.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { DatePlansModule } from './date-plans/date-plans.module';
     LedgerModule,
     ReadingPlansModule,
     DatePlansModule,
+    FamilyTasksModule,
   ],
 })
 export class AppModule {}

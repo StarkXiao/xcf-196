@@ -15,6 +15,8 @@ import MoodCompanion from './pages/MoodCompanion';
 import Ledger from './pages/Ledger';
 import ReadingPlans from './pages/ReadingPlans';
 import DatePlans from './pages/DatePlans';
+import FamilyTasks from './pages/FamilyTasks';
+import FamilyTasksReview from './pages/FamilyTasksReview';
 
 function App() {
   return (
@@ -32,6 +34,8 @@ function App() {
         <Route path="date-plans" element={<DatePlans />} />
         <Route path="ledger" element={<Ledger />} />
         <Route path="reading-plans" element={<ReadingPlans />} />
+        <Route path="family-tasks" element={<FamilyTasks />} />
+        <Route path="family-tasks/review" element={<FamilyTasksReview />} />
         <Route path="timeline" element={<Timeline />} />
         <Route path="reminders" element={<Reminders />} />
         <Route path="monthly-review" element={<MonthlyReview />} />

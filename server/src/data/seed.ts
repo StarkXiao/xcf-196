@@ -84,7 +84,7 @@ export interface Reminder {
 export interface TimelineEvent {
   id: string;
   date: string;
-  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth' | 'ledger_expense' | 'reading_plan_created' | 'reading_milestone' | 'reading_checkin' | 'reading_thought';
+  type: 'pact_created' | 'pact_completed' | 'checkin' | 'milestone' | 'anniversary' | 'makeup_checkin' | 'wish_created' | 'wish_claimed' | 'wish_completed' | 'growth' | 'ledger_expense' | 'reading_plan_created' | 'reading_milestone' | 'reading_checkin' | 'reading_thought' | 'date_plan_created' | 'date_plan_voting' | 'date_plan_confirmed' | 'date_plan_booked' | 'date_plan_checkin' | 'date_plan_completed' | 'family_task_created' | 'family_task_assigned' | 'family_task_completed' | 'family_task_verified';
   title: string;
   description: string;
   icon: string;
@@ -2697,3 +2697,274 @@ export const mockReadingMilestones: ReadingMilestone[] = (() => {
   });
   return milestones;
 })();
+
+export const mockPartner: User = {
+  id: 'partner-1',
+  name: '星星',
+  avatar: '⭐',
+  partnerName: '小月',
+  partnerAvatar: '🌙',
+  anniversary: '2023-02-14',
+  bio: '愿我们的约定，像星光一样璀璨永恒',
+  theme: 'moonlight',
+  notifications: {
+    dailyReminder: true,
+    pactReminder: true,
+    checkinReminder: true,
+    anniversaryReminder: true,
+    smartDedup: true,
+    staggeredDelivery: true,
+  },
+};
+
+export interface FamilyTask {
+  id: string;
+  title: string;
+  description: string;
+  category: 'cleaning' | 'cooking' | 'shopping' | 'laundry' | 'maintenance' | 'finance' | 'childcare' | 'errands' | 'planning' | 'other';
+  assignedTo: 'user' | 'partner' | 'both';
+  createdBy: 'user' | 'partner';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  points: number;
+  status: 'pending' | 'in_progress' | 'completed' | 'verified' | 'cancelled';
+  deadline?: string;
+  reminderEnabled: boolean;
+  reminderDaysBefore: number;
+  reminderTime: string;
+  repeat: 'none' | 'daily' | 'weekly' | 'monthly';
+  repeatEndDate?: string;
+  completedAt?: string;
+  completedBy?: 'user' | 'partner';
+  verifiedAt?: string;
+  verifiedBy?: 'user' | 'partner';
+  completionNote?: string;
+  completionPhotos?: string[];
+  color: string;
+  icon: string;
+  createdAt: string;
+  updatedAt: string;
+  parentTaskId?: string;
+}
+
+export const mockFamilyTasks: FamilyTask[] = [
+  {
+    id: 'family-task-1',
+    title: '打扫客厅卫生',
+    description: '包括拖地、擦桌子、整理沙发靠垫',
+    category: 'cleaning',
+    assignedTo: 'user',
+    createdBy: 'partner',
+    priority: 'medium',
+    points: 10,
+    status: 'verified',
+    deadline: '2026-06-15',
+    reminderEnabled: true,
+    reminderDaysBefore: 1,
+    reminderTime: '09:00',
+    repeat: 'weekly',
+    repeatEndDate: '2026-12-31',
+    completedAt: '2026-06-15T10:30:00Z',
+    completedBy: 'user',
+    verifiedAt: '2026-06-15T11:00:00Z',
+    verifiedBy: 'partner',
+    color: '#74b9ff',
+    icon: '🧹',
+    createdAt: '2026-06-10T08:00:00Z',
+    updatedAt: '2026-06-15T11:00:00Z',
+  },
+  {
+    id: 'family-task-2',
+    title: '做周末晚餐',
+    description: '准备两人份的浪漫晚餐，意面加红酒',
+    category: 'cooking',
+    assignedTo: 'partner',
+    createdBy: 'user',
+    priority: 'high',
+    points: 20,
+    status: 'completed',
+    deadline: '2026-06-20',
+    reminderEnabled: true,
+    reminderDaysBefore: 1,
+    reminderTime: '15:00',
+    repeat: 'none',
+    completedAt: '2026-06-18T19:00:00Z',
+    completedBy: 'partner',
+    completionNote: '做了奶油蘑菇意面，还煎了牛排，味道超棒！',
+    color: '#fd79a8',
+    icon: '🍳',
+    createdAt: '2026-06-16T10:00:00Z',
+    updatedAt: '2026-06-18T19:00:00Z',
+  },
+  {
+    id: 'family-task-3',
+    title: '采购本周生活用品',
+    description: '去超市采购牙膏、纸巾、洗衣液等日用品',
+    category: 'shopping',
+    assignedTo: 'both',
+    createdBy: 'user',
+    priority: 'medium',
+    points: 10,
+    status: 'in_progress',
+    deadline: '2026-06-19',
+    reminderEnabled: true,
+    reminderDaysBefore: 1,
+    reminderTime: '10:00',
+    repeat: 'weekly',
+    repeatEndDate: '2026-12-31',
+    color: '#fdcb6e',
+    icon: '🛒',
+    createdAt: '2026-06-17T09:00:00Z',
+    updatedAt: '2026-06-18T14:00:00Z',
+  },
+  {
+    id: 'family-task-4',
+    title: '洗衣服并晾晒',
+    description: '把攒了一周的衣服洗完晾干',
+    category: 'laundry',
+    assignedTo: 'user',
+    createdBy: 'user',
+    priority: 'low',
+    points: 5,
+    status: 'pending',
+    deadline: '2026-06-19',
+    reminderEnabled: true,
+    reminderDaysBefore: 1,
+    reminderTime: '08:00',
+    repeat: 'weekly',
+    repeatEndDate: '2026-12-31',
+    color: '#a29bfe',
+    icon: '🧺',
+    createdAt: '2026-06-17T20:00:00Z',
+    updatedAt: '2026-06-17T20:00:00Z',
+  },
+  {
+    id: 'family-task-5',
+    title: '修理漏水的水龙头',
+    description: '厨房水龙头有点滴水，需要更换密封圈',
+    category: 'maintenance',
+    assignedTo: 'partner',
+    createdBy: 'user',
+    priority: 'urgent',
+    points: 30,
+    status: 'pending',
+    deadline: '2026-06-18',
+    reminderEnabled: true,
+    reminderDaysBefore: 0,
+    reminderTime: '09:00',
+    repeat: 'none',
+    color: '#00cec9',
+    icon: '🔧',
+    createdAt: '2026-06-17T21:00:00Z',
+    updatedAt: '2026-06-17T21:00:00Z',
+  },
+  {
+    id: 'family-task-6',
+    title: '整理本月账单',
+    description: '核对本月的水电、房租、信用卡等账单',
+    category: 'finance',
+    assignedTo: 'both',
+    createdBy: 'partner',
+    priority: 'medium',
+    points: 10,
+    status: 'pending',
+    deadline: '2026-06-25',
+    reminderEnabled: true,
+    reminderDaysBefore: 3,
+    reminderTime: '19:00',
+    repeat: 'monthly',
+    repeatEndDate: '2026-12-31',
+    color: '#55efc4',
+    icon: '💰',
+    createdAt: '2026-06-01T10:00:00Z',
+    updatedAt: '2026-06-01T10:00:00Z',
+  },
+  {
+    id: 'family-task-7',
+    title: '取快递',
+    description: '小区门口丰巢有3个快递待取',
+    category: 'errands',
+    assignedTo: 'partner',
+    createdBy: 'user',
+    priority: 'low',
+    points: 5,
+    status: 'verified',
+    deadline: '2026-06-17',
+    reminderEnabled: true,
+    reminderDaysBefore: 0,
+    reminderTime: '18:00',
+    repeat: 'none',
+    completedAt: '2026-06-17T18:30:00Z',
+    completedBy: 'partner',
+    verifiedAt: '2026-06-17T19:00:00Z',
+    verifiedBy: 'user',
+    color: '#ff7675',
+    icon: '🏃',
+    createdAt: '2026-06-17T12:00:00Z',
+    updatedAt: '2026-06-17T19:00:00Z',
+  },
+  {
+    id: 'family-task-8',
+    title: '规划下月旅行',
+    description: '商量7月去哪里玩，确定目的地和大致行程',
+    category: 'planning',
+    assignedTo: 'both',
+    createdBy: 'user',
+    priority: 'high',
+    points: 20,
+    status: 'pending',
+    deadline: '2026-06-22',
+    reminderEnabled: true,
+    reminderDaysBefore: 2,
+    reminderTime: '20:00',
+    repeat: 'none',
+    color: '#6c5ce7',
+    icon: '📋',
+    createdAt: '2026-06-15T22:00:00Z',
+    updatedAt: '2026-06-15T22:00:00Z',
+  },
+  {
+    id: 'family-task-9',
+    title: '给花浇水',
+    description: '阳台的绿萝和多肉需要浇水了',
+    category: 'other',
+    assignedTo: 'user',
+    createdBy: 'partner',
+    priority: 'low',
+    points: 5,
+    status: 'verified',
+    deadline: '2026-06-18',
+    reminderEnabled: true,
+    reminderDaysBefore: 0,
+    reminderTime: '08:00',
+    repeat: 'daily',
+    repeatEndDate: '2026-12-31',
+    completedAt: '2026-06-18T08:15:00Z',
+    completedBy: 'user',
+    verifiedAt: '2026-06-18T08:30:00Z',
+    verifiedBy: 'partner',
+    color: '#b2bec3',
+    icon: '📌',
+    createdAt: '2026-06-01T07:00:00Z',
+    updatedAt: '2026-06-18T08:30:00Z',
+  },
+  {
+    id: 'family-task-10',
+    title: '准备惊喜礼物',
+    description: '悄悄准备一份小惊喜送给对方',
+    category: 'other',
+    assignedTo: 'both',
+    createdBy: 'user',
+    priority: 'medium',
+    points: 15,
+    status: 'in_progress',
+    deadline: '2026-06-28',
+    reminderEnabled: true,
+    reminderDaysBefore: 3,
+    reminderTime: '10:00',
+    repeat: 'none',
+    color: '#fab1a0',
+    icon: '🎁',
+    createdAt: '2026-06-10T12:00:00Z',
+    updatedAt: '2026-06-16T15:00:00Z',
+  },
+];

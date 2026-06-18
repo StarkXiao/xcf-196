@@ -69,6 +69,10 @@ import type {
   DateCheckin,
   DateReview,
   DatePlanStats,
+  FamilyTask,
+  FamilyTaskStats,
+  FamilyTaskReview,
+  FamilyTaskCategory,
 } from '../types';
 
 const api = axios.create({
@@ -513,4 +517,31 @@ export const datePlansApi = {
     api.post<DateReview>(`/date-plans/${id}/review`, data).then(res => res.data),
   cancel: (id: string) =>
     api.post<DatePlan>(`/date-plans/${id}/cancel`).then(res => res.data),
+};
+
+export const familyTasksApi = {
+  findAll: (status?: string, category?: string, assignedTo?: string) =>
+    api.get<FamilyTask[]>('/family-tasks', { params: { status, category, assignedTo } }).then(res => res.data),
+  findOne: (id: string) => api.get<FamilyTask>(`/family-tasks/${id}`).then(res => res.data),
+  create: (data: Partial<FamilyTask> & { title: string; category: FamilyTask['category']; assignedTo: FamilyTask['assignedTo']; createdBy: 'user' | 'partner' }) =>
+    api.post<FamilyTask>('/family-tasks', data).then(res => res.data),
+  update: (id: string, data: Partial<FamilyTask>) =>
+    api.patch<FamilyTask>(`/family-tasks/${id}`, data).then(res => res.data),
+  remove: (id: string) => api.delete(`/family-tasks/${id}`),
+  assign: (id: string, assignedTo: FamilyTask['assignedTo']) =>
+    api.post<FamilyTask>(`/family-tasks/${id}/assign`, { assignedTo }).then(res => res.data),
+  startProgress: (id: string) =>
+    api.post<FamilyTask>(`/family-tasks/${id}/start`).then(res => res.data),
+  complete: (id: string, data: { completedBy: 'user' | 'partner'; completionNote?: string; completionPhotos?: string[] }) =>
+    api.post<FamilyTask>(`/family-tasks/${id}/complete`, data).then(res => res.data),
+  verify: (id: string, verifiedBy: 'user' | 'partner') =>
+    api.post<FamilyTask>(`/family-tasks/${id}/verify`, { verifiedBy }).then(res => res.data),
+  cancel: (id: string) =>
+    api.post<FamilyTask>(`/family-tasks/${id}/cancel`).then(res => res.data),
+  getStats: () => api.get<FamilyTaskStats>('/family-tasks/stats').then(res => res.data),
+  getReview: (period?: 'week' | 'month') =>
+    api.get<FamilyTaskReview>('/family-tasks/review', { params: { period } }).then(res => res.data),
+  getUpcomingReminders: (days?: number) =>
+    api.get<FamilyTask[]>('/family-tasks/upcoming-reminders', { params: { days } }).then(res => res.data),
+  getCategories: () => api.get<FamilyTaskCategory[]>('/family-tasks/categories').then(res => res.data),
 };

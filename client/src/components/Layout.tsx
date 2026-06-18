@@ -7,6 +7,7 @@ const navItems = [
   { path: '/dashboard', label: '首页', icon: '🏠' },
   { path: '/pacts', label: '约定', icon: '✨' },
   { path: '/checkins', label: '打卡', icon: '📝' },
+  { path: '/family-tasks', label: '家庭任务', icon: '🧹' },
   { path: '/mood', label: '情绪陪伴', icon: '💗' },
   { path: '/reading-plans', label: '共读计划', icon: '📚' },
   { path: '/ledger', label: '共同账本', icon: '💰' },

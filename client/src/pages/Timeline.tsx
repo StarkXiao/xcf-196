@@ -29,6 +29,10 @@ const typeLabels: Record<string, string> = {
   date_plan_booked: '约会预约',
   date_plan_checkin: '约会打卡',
   date_plan_completed: '约会完成',
+  family_task_created: '创建任务',
+  family_task_assigned: '分配任务',
+  family_task_completed: '完成任务',
+  family_task_verified: '确认任务',
 };
 
 const moodMap: Record<string, { emoji: string; label: string; color: string }> = {
